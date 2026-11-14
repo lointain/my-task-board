@@ -1,12 +1,16 @@
 import type { Board } from "../data/types";
-import { BOARD_LABEL, weekDays } from "../lib/board";
+import { BOARD_LABEL, dateKey, weekDays } from "../lib/board";
+import { useDragStore } from "../lib/drag";
 import { useAppStore } from "../store/useAppStore";
 
 export function WeekStrip() {
   const board = useAppStore((state) => state.board);
   const setBoard = useAppStore((state) => state.setBoard);
   const data = useAppStore((state) => state.data);
+  const dragging = useDragStore((state) => Boolean(state.taskId));
+  const over = useDragStore((state) => state.over);
   const days = weekDays();
+  const todayKey = dateKey(new Date());
 
   const countFor = (target: Board) => {
     if (!data) return 0;
@@ -14,21 +18,36 @@ export function WeekStrip() {
     return data.placements.filter((placement) => placement.board === target).length;
   };
 
+  const dropRing = (target: Board) =>
+    dragging && over?.kind === "board" && over.board === target
+      ? "ring-2 ring-emerald-400/70 ring-offset-1 ring-offset-[var(--panel-2)]"
+      : "";
+
   return (
     <div className="flex items-center gap-1 overflow-x-auto">
       {days.map((day) => {
         const active = board === day.board;
         const count = countFor(day.board);
+        const isPast = day.dateKey < todayKey;
         return (
           <button
             key={day.board}
             type="button"
+            data-drop-board={isPast ? undefined : day.board}
+            title={
+              isPast
+                ? `${day.short} 已过去，不能投放（会顺延到今天）`
+                : `拖到这里 = 承诺到${day.short}`
+            }
             onClick={() => setBoard(day.board)}
             className={[
               "group flex h-9 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-xs transition-colors",
               active
                 ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-200"
-                : "border-transparent text-slate-400 hover:border-[var(--line)] hover:bg-white/[0.04] hover:text-slate-200",
+                : isPast
+                  ? "border-transparent text-slate-600 hover:bg-white/[0.03]"
+                  : "border-transparent text-slate-400 hover:border-[var(--line)] hover:bg-white/[0.04] hover:text-slate-200",
+              dropRing(day.board),
             ].join(" ")}
           >
             <span className="font-medium">{day.short}</span>
@@ -46,12 +65,15 @@ export function WeekStrip() {
       })}
       <button
         type="button"
+        data-drop-board="week"
+        title="拖到这里 = 承诺到周图"
         onClick={() => setBoard("week")}
         className={[
           "flex h-9 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-xs transition-colors",
           board === "week"
             ? "border-amber-400/40 bg-amber-400/10 text-amber-200"
             : "border-transparent text-slate-400 hover:border-[var(--line)] hover:bg-white/[0.04] hover:text-slate-200",
+          dropRing("week"),
         ].join(" ")}
       >
         <span className="font-medium">周</span>

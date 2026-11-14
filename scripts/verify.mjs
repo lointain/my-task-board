@@ -50,16 +50,34 @@ await page.getByRole("button", { name: "完成", exact: true }).click();
 await page.waitForTimeout(500);
 check("拆解出子任务", (await page.locator("body").innerText()).includes(child));
 
-// 3. 拖到图上
-const svg = page.locator('svg[aria-label="重要性紧迫性四象限任务图"]');
-await page.getByText(child, { exact: true }).last().dragTo(svg, {
-  targetPosition: { x: 320, y: 280 },
+// 3. 拖到图上（指针拖拽）
+const pointIndex = () =>
+  page.$$eval(
+    "g.chart-point",
+    (els, name) => els.findIndex((el) => (el.getAttribute("aria-label") ?? "").startsWith(name)),
+    child,
+  );
+const pointAt = async () => page.locator("g.chart-point").nth(await pointIndex());
+
+const svg = page.locator("svg[data-chart-svg]");
+const dragRow = page.getByText(child, { exact: true }).last();
+await dragRow.scrollIntoViewIfNeeded();
+const dragRowBox = await dragRow.boundingBox();
+const svgBox = await svg.boundingBox();
+if (!dragRowBox || !svgBox) throw new Error("no drag boxes");
+await page.mouse.move(dragRowBox.x + 70, dragRowBox.y + dragRowBox.height / 2);
+await page.mouse.down();
+await page.mouse.move(dragRowBox.x + 30, dragRowBox.y - 10, { steps: 4 });
+await page.mouse.move(svgBox.x + svgBox.width * 0.4, svgBox.y + svgBox.height * 0.45, {
+  steps: 10,
 });
+await page.waitForTimeout(250);
+await page.mouse.up();
 await page.waitForTimeout(1000);
-check("拖入生成承诺点", (await page.locator("g.chart-point").count()) > 0);
+check("拖入生成承诺点", (await pointIndex()) >= 0);
 
 // 4. 拖动点并验证持久化
-const point = page.locator("g.chart-point").first();
+const point = await pointAt();
 const before = await point.getAttribute("transform");
 const circle = point.locator("circle").last();
 const box = await circle.boundingBox();
@@ -70,15 +88,15 @@ if (box) {
   await page.mouse.up();
   await page.waitForTimeout(900);
 }
-const after = await point.getAttribute("transform");
+const after = await (await pointAt()).getAttribute("transform");
 check("拖动点改变坐标", before !== after);
 await page.reload();
 await page.waitForTimeout(1000);
-const reloaded = await page.locator("g.chart-point").first().getAttribute("transform");
+const reloaded = await (await pointAt()).getAttribute("transform");
 check("坐标持久化", reloaded === after);
 
 // 5. 详情 + 笔记
-await page.locator("g.chart-point").first().locator("circle").last().dblclick();
+await (await pointAt()).locator("circle").last().dblclick({ force: true });
 await page.waitForTimeout(500);
 check("双击打开详情", (await page.locator("body").innerText()).includes("任务详情"));
 const addNote = page.getByRole("button", { name: "添加说明", exact: true });
@@ -89,14 +107,14 @@ if (await addNote.count()) {
   await page.locator(".tiptap").first().type("冒烟笔记");
   await page.getByRole("button", { name: "保存", exact: true }).click();
   await page.waitForTimeout(800);
-  await page.locator("g.chart-point").first().locator("circle").last().dblclick();
+  await (await pointAt()).locator("circle").last().dblclick({ force: true });
   await page.waitForTimeout(500);
   check("笔记保存", (await page.locator("body").innerText()).includes("冒烟笔记"));
   await page.getByRole("button", { name: "取消", exact: true }).click();
 }
 
 // 6. 动量/截止日
-await page.locator("g.chart-point").first().locator("circle").last().click({ button: "right" });
+await (await pointAt()).locator("circle").last().click({ button: "right", force: true });
 await page.waitForTimeout(300);
 await page.getByRole("button", { name: "动量 / 截止日期", exact: true }).click();
 await page.waitForTimeout(300);
@@ -106,9 +124,14 @@ await page.waitForTimeout(900);
 check("设置截止日", (await page.locator("body").innerText()).includes("12-31"));
 
 // 7. 完成 → 点消失、树保留
-await page.locator('button[title="完成（级联子任务）"]').last().click();
+await page
+  .locator("[data-task-row]")
+  .filter({ hasText: child })
+  .locator('button[title="完成（级联子任务）"]')
+  .first()
+  .click();
 await page.waitForTimeout(900);
-check("完成后点图消失", (await page.locator("g.chart-point").count()) === 0);
+check("完成后点图消失", (await pointIndex()) === -1);
 check("完成后树保留", (await page.locator("body").innerText()).includes(child));
 
 // 8. 周统计

@@ -169,9 +169,10 @@ export function TaskDetailModal({ task, onClose }: TaskDetailModalProps) {
     {
       immediatelyRender: false,
       extensions: [
-        StarterKit.configure({ link: { openOnClick: false } }),
+        // TaskList 放在 StarterKit 之前，让 "- [ ] " 的输入规则先于 bulletList 生效
         TaskList,
         TaskItem.configure({ nested: true }),
+        StarterKit.configure({ link: { openOnClick: false } }),
         Image,
         Placeholder.configure({
           placeholder: "记录上下文、下一步、链接… 输入 `- [ ]` 创建待办",
@@ -371,7 +372,7 @@ export function TaskDetailModal({ task, onClose }: TaskDetailModalProps) {
                 >
                   <ImageIcon size={13} />
                 </EditorButton>
-                <span className="ml-auto text-[9px] text-slate-600">支持 Markdown 快捷输入</span>
+                <span className="ml-auto text-[9px] text-slate-600">支持 `[]` 快捷生成待办</span>
               </div>
               <div className="max-h-[320px] overflow-y-auto px-3.5 py-3">
                 <EditorContent editor={editor} />

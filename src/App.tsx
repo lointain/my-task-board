@@ -2,6 +2,7 @@ import { BarChart3, CalendarDays, ListTree, Plus, Settings2, Sparkles } from "lu
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ContextMenu, type MenuItem } from "./components/ContextMenu";
 import { DecompositionModal } from "./components/DecompositionModal";
+import { DragGhost } from "./components/DragGhost";
 import { FilterBar } from "./components/FilterBar";
 import { MomentumModal } from "./components/MomentumModal";
 import { ProjectModal } from "./components/ProjectModal";
@@ -13,6 +14,8 @@ import { WeeklyStatsModal } from "./components/WeeklyStatsModal";
 import { WeekStrip } from "./components/WeekStrip";
 import type { Task } from "./data/types";
 import { BOARD_LABEL, rootOf } from "./lib/board";
+import { clientToChartPoint } from "./lib/chartGeometry";
+import { registerDropHandler } from "./lib/drag";
 import { matchesFilter } from "./lib/filter";
 import { useAppStore } from "./store/useAppStore";
 
@@ -35,7 +38,8 @@ export default function App() {
   const selectedId = useAppStore((state) => state.selectedId);
   const taskTags = useAppStore((state) => state.taskTags);
   const select = useAppStore((state) => state.select);
-  const placeTask = useAppStore((state) => state.placeTask);
+  const setBoard = useAppStore((state) => state.setBoard);
+  const placeTaskOn = useAppStore((state) => state.placeTaskOn);
   const movePlacement = useAppStore((state) => state.movePlacement);
   const removePlacement = useAppStore((state) => state.removePlacement);
   const createTask = useAppStore((state) => state.createTask);
@@ -65,6 +69,22 @@ export default function App() {
     }, 60_000);
     return () => window.clearInterval(timer);
   }, [reload]);
+
+  useEffect(() => {
+    registerDropHandler((taskId, target, clientX, clientY) => {
+      if (!target) return;
+      const svg = document.querySelector<SVGSVGElement>("[data-chart-svg]");
+      const sameBoardChart = target.kind === "chart";
+      const point =
+        svg && (sameBoardChart || target.board === board)
+          ? clientToChartPoint(svg, clientX, clientY)
+          : { x: 50, y: 50 };
+      const targetBoard = target.kind === "board" ? target.board : board;
+      void placeTaskOn(targetBoard, point.x, point.y, taskId);
+      if (targetBoard !== board) setBoard(targetBoard);
+    });
+    return () => registerDropHandler(null);
+  }, [board, placeTaskOn, setBoard]);
 
   const taskMap = useMemo(
     () => new Map((data?.tasks ?? []).map((task) => [task.id, task])),
@@ -236,7 +256,6 @@ export default function App() {
               onSelect={select}
               onOpenDetail={setDetailId}
               onMove={(taskId, x, y) => void movePlacement(taskId, x, y)}
-              onDropTask={(taskId, x, y) => void placeTask(taskId, x, y)}
               onContextMenu={(taskId, x, y) => setMenu({ taskId, x, y, source: "chart" })}
             />
           </section>
@@ -303,6 +322,8 @@ export default function App() {
       {menu ? (
         <ContextMenu x={menu.x} y={menu.y} items={menuItems} onClose={() => setMenu(null)} />
       ) : null}
+
+      <DragGhost />
 
       {error ? (
         <div className="fixed bottom-12 left-1/2 z-[70] flex max-w-[80vw] -translate-x-1/2 items-center gap-3 rounded-lg border border-red-400/30 bg-red-950/90 px-4 py-2.5 text-[11px] text-red-100 shadow-xl">

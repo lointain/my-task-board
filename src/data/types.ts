@@ -90,6 +90,7 @@ export interface TaskCreateInput {
   title: string;
   parentId?: string | null;
   color?: string | null;
+  afterId?: string | null;
 }
 
 export interface TaskPatchInput {

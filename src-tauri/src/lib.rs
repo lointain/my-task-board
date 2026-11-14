@@ -112,6 +112,8 @@ struct TaskCreate {
     title: String,
     parent_id: Option<String>,
     color: Option<String>,
+    /// 新建节点插到这个同级节点之后；为空则追加到末尾。
+    after_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -701,14 +703,39 @@ fn task_create(state: State<'_, AppState>, input: TaskCreate) -> Result<Task, St
             return Err("父任务不存在".into());
         }
     }
-    let sort_order: f64 = conn
-        .query_row(
+    let sort_order: f64 = if let Some(after_id) = input.after_id.as_deref() {
+        let after: (Option<String>, f64) = conn
+            .query_row(
+                "SELECT parent_id, sort_order FROM tasks WHERE id = ?1 AND deleted_at IS NULL",
+                params![after_id],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .map_err(|_| "插入位置不存在".to_string())?;
+        let next: Option<f64> = conn
+            .query_row(
+                "SELECT MIN(sort_order) FROM tasks
+                 WHERE deleted_at IS NULL
+                   AND IFNULL(parent_id,'') = IFNULL(?1,'')
+                   AND sort_order > ?2",
+                params![input.parent_id, after.1],
+                |row| row.get(0),
+            )
+            .optional()
+            .map_err(|e| e.to_string())?
+            .flatten();
+        match next {
+            Some(next_order) => (after.1 + next_order) / 2.0,
+            None => after.1 + 1.0,
+        }
+    } else {
+        conn.query_row(
             "SELECT COALESCE(MAX(sort_order), 0) + 1 FROM tasks
              WHERE deleted_at IS NULL AND IFNULL(parent_id,'') = IFNULL(?1,'')",
             params![input.parent_id],
             |row| row.get(0),
         )
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| e.to_string())?
+    };
     let id = Uuid::new_v4().to_string();
     let now = now_iso();
     conn.execute(

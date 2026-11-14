@@ -27,12 +27,17 @@ interface AppStore {
   select: (id: string | null) => void;
   setFilter: (board: Board, filter: FilterState) => void;
   resetFilter: (board: Board) => void;
-  createTask: (input: { title: string; parentId?: string | null }) => Promise<Task | null>;
+  createTask: (input: {
+    title: string;
+    parentId?: string | null;
+    afterId?: string | null;
+  }) => Promise<Task | null>;
   updateTask: (id: string, patch: Parameters<typeof repo.taskUpdate>[1]) => Promise<void>;
   completeTask: (id: string, done: boolean) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
   setTags: (taskId: string, tagIds: string[]) => Promise<void>;
   placeTask: (taskId: string, x: number, y: number) => Promise<void>;
+  placeTaskOn: (board: Board, x: number, y: number, taskId: string) => Promise<void>;
   movePlacement: (taskId: string, x: number, y: number) => Promise<void>;
   removePlacement: (taskId: string) => Promise<void>;
   setMomentum: (input: {
@@ -191,6 +196,21 @@ export const useAppStore = create<AppStore>((set, get) => ({
   placeTask: async (taskId, x, y) => {
     try {
       const { board } = get();
+      await repo.placementUpsert({
+        taskId,
+        board,
+        scheduledDate: boardDateKey(board),
+        x,
+        y,
+      });
+      await get().reload();
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : String(error) });
+    }
+  },
+
+  placeTaskOn: async (board, x, y, taskId) => {
+    try {
       await repo.placementUpsert({
         taskId,
         board,

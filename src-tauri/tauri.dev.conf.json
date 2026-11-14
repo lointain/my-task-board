@@ -1,0 +1,17 @@
+{
+  "identifier": "com.yao.taskboard.dev",
+  "productName": "TaskBoard Dev",
+  "app": {
+    "windows": [
+      {
+        "title": "TaskBoard Dev · 开发实例",
+        "width": 1440,
+        "height": 900,
+        "minWidth": 1100,
+        "minHeight": 720,
+        "center": true,
+        "resizable": true
+      }
+    ]
+  }
+}

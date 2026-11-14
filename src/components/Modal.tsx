@@ -1,5 +1,5 @@
 import { X } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 
 interface ModalProps {
   open: boolean;
@@ -9,6 +9,10 @@ interface ModalProps {
   children: ReactNode;
   width?: string;
   footer?: ReactNode;
+  /** 点击遮罩是否关闭；拆解这类高频键盘界面应设为 false。 */
+  dismissOnBackdrop?: boolean;
+  /** 是否响应 Esc 关闭。 */
+  closeOnEscape?: boolean;
 }
 
 export function Modal({
@@ -19,13 +23,24 @@ export function Modal({
   children,
   width = "max-w-2xl",
   footer,
+  dismissOnBackdrop = true,
+  closeOnEscape = true,
 }: ModalProps) {
+  useEffect(() => {
+    if (!open || !closeOnEscape) return;
+    const handler = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [open, closeOnEscape, onClose]);
+
   if (!open) return null;
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 backdrop-blur-[2px]"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        if (dismissOnBackdrop && event.target === event.currentTarget) onClose();
       }}
     >
       <div

@@ -20,6 +20,7 @@ import {
   shortTitle,
   startOfWeek,
 } from "../lib/board";
+import { beginTaskDrag, justDragged } from "../lib/drag";
 import { useAppStore } from "../store/useAppStore";
 
 interface TaskTreeProps {
@@ -106,17 +107,24 @@ export function TaskTree({ onOpenDetail, onContextMenu, onNewProject }: TaskTree
       <div key={task.id}>
         <div
           className={[
-            "group flex min-h-8 items-center gap-1 rounded-md pr-1 text-xs",
+            "group flex min-h-8 cursor-grab items-center gap-1 rounded-md pr-1 text-xs active:cursor-grabbing",
             selectedId === task.id ? "bg-white/[0.07]" : "hover:bg-white/[0.04]",
           ].join(" ")}
           style={{ paddingLeft: depth * 14 + 4 }}
-          draggable
-          onDragStart={(event) => {
-            event.dataTransfer.setData("text/task-id", task.id);
-            event.dataTransfer.effectAllowed = "copy";
+          data-task-row={task.id}
+          onPointerDown={(event) => {
+            if (event.button !== 0) return;
+            if ((event.target as HTMLElement).closest("button")) return;
+            beginTaskDrag(task.id, task.title, event.clientX, event.clientY);
           }}
-          onClick={() => select(task.id)}
-          onDoubleClick={() => onOpenDetail(task.id)}
+          onClick={() => {
+            if (justDragged()) return;
+            select(task.id);
+          }}
+          onDoubleClick={() => {
+            if (justDragged()) return;
+            onOpenDetail(task.id);
+          }}
           onContextMenu={(event) => {
             event.preventDefault();
             onContextMenu(task, event.clientX, event.clientY);

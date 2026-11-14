@@ -204,3 +204,17 @@ body {
 .chart-point:hover .halo {
   opacity: 0.2;
 }
+
+/* ------------------------------------------------------------------ */
+/* 拖拽：树节点 → 图 / 日板                                             */
+/* ------------------------------------------------------------------ */
+
+body.task-dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+body.task-dragging .chart-point {
+  cursor: grabbing;
+}
+

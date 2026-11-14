@@ -2,19 +2,31 @@ import { axisBottom, axisLeft } from "d3-axis";
 import { drag } from "d3-drag";
 import { scaleLinear } from "d3-scale";
 import { select } from "d3-selection";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Board, FilterState, Placement, Tag, Task } from "../data/types";
 import { BOARD_LABEL, colorForTask, dateKey, isOverdue, shortTitle } from "../lib/board";
+import { CHART, CHART_INNER_H, CHART_INNER_W, pixelToUrgency } from "../lib/chartGeometry";
+import { useDragStore } from "../lib/drag";
 import { matchesFilter } from "../lib/filter";
+import { ChartTooltip } from "./ChartTooltip";
 
-const WIDTH = 880;
-const HEIGHT = 620;
-const MARGIN = { top: 34, right: 34, bottom: 56, left: 64 };
-const INNER_W = WIDTH - MARGIN.left - MARGIN.right;
-const INNER_H = HEIGHT - MARGIN.top - MARGIN.bottom;
+const WIDTH = CHART.WIDTH;
+const HEIGHT = CHART.HEIGHT;
+const MARGIN = CHART.MARGIN;
+const INNER_W = CHART_INNER_W;
+const INNER_H = CHART_INNER_H;
 
+// x 轴反向：紧迫度 100 在最左，Q1 因此在左上角
 const QUADRANT_STYLE = [
-  { id: "q2" as const, x0: 0, x1: 50, y0: 50, y1: 100, label: "Q2 · 重要不紧急", color: "#34d399" },
+  {
+    id: "q2" as const,
+    x0: 0,
+    x1: 50,
+    y0: 50,
+    y1: 100,
+    label: "Q2 · 重要不紧急",
+    color: "#34d399",
+  },
   {
     id: "q1" as const,
     x0: 50,
@@ -46,7 +58,6 @@ interface QuadrantChartProps {
   onSelect: (id: string) => void;
   onOpenDetail: (id: string) => void;
   onMove: (taskId: string, x: number, y: number) => void;
-  onDropTask: (taskId: string, x: number, y: number) => void;
   onContextMenu: (taskId: string, x: number, y: number) => void;
 }
 
@@ -62,11 +73,24 @@ export function QuadrantChart({
   onSelect,
   onOpenDetail,
   onMove,
-  onDropTask,
   onContextMenu,
 }: QuadrantChartProps) {
   const svgRef = useRef<SVGSVGElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
+  const [hover, setHover] = useState<{ taskId: string; x: number; y: number } | null>(null);
+  const [size, setSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      const rect = entries[0]?.contentRect;
+      if (rect) setSize({ width: rect.width, height: rect.height });
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   const taskMap = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks]);
 
@@ -104,7 +128,8 @@ export function QuadrantChart({
     const svg = select(svgEl);
     svg.selectAll("*").remove();
 
-    const x = scaleLinear().domain([0, 100]).range([0, INNER_W]);
+    // 反向 x 轴：紧迫度 100 在左、0 在右
+    const x = scaleLinear().domain([100, 0]).range([0, INNER_W]);
     const y = scaleLinear().domain([0, 100]).range([INNER_H, 0]);
     const root = svg.append("g").attr("transform", `translate(${MARGIN.left},${MARGIN.top})`);
 
@@ -120,9 +145,9 @@ export function QuadrantChart({
       .selectAll("rect.quadrant")
       .data(QUADRANT_STYLE)
       .join("rect")
-      .attr("x", (d) => x(d.x0))
+      .attr("x", (d) => Math.min(x(d.x0), x(d.x1)))
       .attr("y", (d) => y(d.y1))
-      .attr("width", (d) => x(d.x1) - x(d.x0))
+      .attr("width", (d) => Math.abs(x(d.x1) - x(d.x0)))
       .attr("height", (d) => y(d.y0) - y(d.y1))
       .attr("fill", (d) => d.color)
       .attr("opacity", 0.045);
@@ -153,7 +178,8 @@ export function QuadrantChart({
       .attr("stroke-dasharray", (d) => (d === 50 ? "0" : "3 5"));
 
     for (const q of QUADRANT_STYLE) {
-      const left = q.x0 === 0;
+      const centerX = (x(q.x0) + x(q.x1)) / 2;
+      const left = centerX < INNER_W / 2;
       const top = q.y1 === 100;
       root
         .append("text")
@@ -193,7 +219,7 @@ export function QuadrantChart({
       .attr("text-anchor", "end")
       .attr("fill", "#8b98a9")
       .attr("font-size", 11)
-      .text("紧迫性 →");
+      .text("← 越靠左越紧迫");
 
     root
       .append("text")
@@ -239,6 +265,14 @@ export function QuadrantChart({
       .attr("r", 15)
       .attr("fill", (d) => colorForTask(d.task, taskMap, d.tagIds, tags, settings));
 
+    points.attr("aria-label", (d) => {
+      const due = d.task.effectiveDue ? ` · 截止 ${d.task.effectiveDue}` : "";
+      const day = d.placement.board === "week" ? "周级" : BOARD_LABEL[d.placement.board];
+      return `${d.task.title} · ${day} · 紧迫 ${Math.round(d.placement.x)} / 重要 ${Math.round(
+        d.placement.y,
+      )}${due}`;
+    });
+
     points
       .filter((d) => isOverdue(d.task, dateKey(new Date())))
       .append("circle")
@@ -255,19 +289,45 @@ export function QuadrantChart({
       .attr("stroke", (d) => (d.task.id === selectedId ? "#e6edf3" : "#0b0f14"))
       .attr("stroke-width", (d) => (d.task.id === selectedId ? 2 : 1.5));
 
-    points.append("title").text((d) => {
-      const due = d.task.effectiveDue ? ` · 截止 ${d.task.effectiveDue}` : "";
-      const day = d.placement.board === "week" ? "周级" : BOARD_LABEL[d.placement.board];
-      return `${d.task.title}\n${day} · 紧迫 ${Math.round(d.placement.x)} / 重要 ${Math.round(
-        d.placement.y,
-      )}${due}`;
-    });
+    points
+      .append("circle")
+      .attr("class", "hover-ring")
+      .attr("r", 11)
+      .attr("fill", "none")
+      .attr("stroke", (d) => colorForTask(d.task, taskMap, d.tagIds, tags, settings))
+      .attr("stroke-opacity", 0.5)
+      .attr("stroke-width", 1.5)
+      .attr("opacity", 0);
+
+    const moveTooltip = (event: MouseEvent, d: Entry) => {
+      const el = containerRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      setHover({
+        taskId: d.task.id,
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top,
+      });
+    };
+
+    points
+      .on("mouseenter", function (event: MouseEvent, d) {
+        select(this).select(".hover-ring").attr("opacity", 1);
+        moveTooltip(event, d);
+      })
+      .on("mousemove", (event: MouseEvent, d) => {
+        moveTooltip(event, d);
+      })
+      .on("mouseleave", function () {
+        select(this).select(".hover-ring").attr("opacity", 0);
+        setHover(null);
+      });
 
     if (entries.length <= 40) {
       points
         .append("text")
-        .attr("x", (d) => (d.placement.x > 82 ? -10 : 10))
-        .attr("text-anchor", (d) => (d.placement.x > 82 ? "end" : "start"))
+        .attr("x", (d) => (d.placement.x < 18 ? -10 : 10))
+        .attr("text-anchor", (d) => (d.placement.x < 18 ? "end" : "start"))
         .attr("y", 4)
         .attr("fill", (d) => (d.task.id === selectedId ? "#e6edf3" : "#9aa7b7"))
         .attr("font-size", 10)
@@ -294,6 +354,7 @@ export function QuadrantChart({
     const dragBehavior = drag<SVGGElement, Entry>()
       .on("start", function () {
         draggingRef.current = true;
+        setHover(null);
         select(this).raise();
       })
       .on("drag", function (event) {
@@ -303,7 +364,7 @@ export function QuadrantChart({
       })
       .on("end", (event, d) => {
         draggingRef.current = false;
-        const nx = Math.max(0, Math.min(100, (event.x / INNER_W) * 100));
+        const nx = pixelToUrgency(event.x);
         const ny = Math.max(0, Math.min(100, 100 - (event.y / INNER_H) * 100));
         onMove(d.task.id, Math.round(nx), Math.round(ny));
       });
@@ -322,31 +383,63 @@ export function QuadrantChart({
     taskMap,
   ]);
 
-  const handleDrop = (event: React.DragEvent<SVGSVGElement>) => {
-    event.preventDefault();
-    const taskId = event.dataTransfer.getData("text/task-id");
-    if (!taskId || !svgRef.current) return;
-    const rect = svgRef.current.getBoundingClientRect();
-    const scaleX = WIDTH / rect.width;
-    const scaleY = HEIGHT / rect.height;
-    const px = (event.clientX - rect.left) * scaleX;
-    const py = (event.clientY - rect.top) * scaleY;
-    const x = Math.max(0, Math.min(100, ((px - MARGIN.left) / INNER_W) * 100));
-    const y = Math.max(0, Math.min(100, 100 - ((py - MARGIN.top) / INNER_H) * 100));
-    onDropTask(taskId, Math.round(x), Math.round(y));
-  };
+  const dragging = useDragStore((state) => Boolean(state.taskId));
+  const overChart = useDragStore((state) => state.over?.kind === "chart");
+
+  const hovered = hover ? entries.find((entry) => entry.task.id === hover.taskId) : null;
+  const hoveredPath = (() => {
+    if (!hovered) return [] as string[];
+    const chain: string[] = [];
+    let current: Task | undefined = hovered.task;
+    const guard = new Set<string>();
+    while (current && !guard.has(current.id)) {
+      guard.add(current.id);
+      chain.unshift(current.title);
+      current = current.parentId ? taskMap.get(current.parentId) : undefined;
+    }
+    return chain;
+  })();
+  const hoveredTags = hovered
+    ? hovered.tagIds
+        .map((id) => tags.find((tag) => tag.id === id))
+        .filter((tag): tag is Tag => Boolean(tag))
+    : [];
 
   return (
-    <div className="relative h-full w-full">
+    <div
+      ref={containerRef}
+      data-drop-chart="true"
+      className={[
+        "relative h-full w-full rounded-2xl transition-shadow",
+        dragging && overChart ? "ring-2 ring-emerald-400/60" : "",
+        dragging && !overChart ? "ring-1 ring-emerald-400/20" : "",
+      ].join(" ")}
+    >
       <svg
         ref={svgRef}
+        data-chart-svg="true"
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         className="h-full w-full"
         role="img"
         aria-label="重要性紧迫性四象限任务图"
-        onDragOver={(event) => event.preventDefault()}
-        onDrop={handleDrop}
       />
+      {hovered && hover && !dragging ? (
+        <ChartTooltip
+          task={hovered.task}
+          placement={hovered.placement}
+          tags={hoveredTags}
+          path={hoveredPath}
+          container={size}
+          pointer={{ x: hover.x, y: hover.y }}
+        />
+      ) : null}
+      {dragging ? (
+        <div className="pointer-events-none absolute inset-0 flex items-start justify-center pt-3">
+          <span className="rounded-full border border-emerald-400/30 bg-[var(--bg)]/85 px-2.5 py-0.5 text-[10px] text-emerald-200">
+            {overChart ? "松开：按落点放上去" : `拖到${BOARD_LABEL[board]}图上松开`}
+          </span>
+        </div>
+      ) : null}
       <div className="pointer-events-none absolute right-3 top-2 flex items-center gap-2 text-[10px] text-slate-500">
         {hiddenCount > 0 ? (
           <span className="rounded-full border border-[var(--line)] bg-[var(--bg)]/80 px-2 py-0.5">

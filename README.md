@@ -85,8 +85,29 @@ E2E 冒烟（需先带调试端口启动应用）：
 $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = "--remote-debugging-port=9222"
 pnpm tauri dev
 # 另开终端
-node scripts/verify.mjs
+node scripts/verify.mjs    # 基础回归 14 项
+node scripts/verify2.mjs   # 拖拽 / 拆解 / 编辑器 15 项
 ```
+
+开发实例（与已安装的正式版可同时运行，数据目录独立）：
+
+```powershell
+pnpm tauri dev --config src-tauri/tauri.dev.conf.json
+pwsh -File scripts/reset-dev-db.ps1   # 只清 com.yao.taskboard.dev 的测试库
+```
+
+## 交互速查
+
+| 操作 | 方式 |
+|---|---|
+| 承诺到某天 | 把树节点拖到顶部日期标签，或拖进当前图 |
+| 调整位置 | 直接拖图上的点（吸附 5 点网格）；**横轴反向：越靠左越紧迫，Q1 在左上** |
+| 看详情 | 鼠标悬停点 → 浮层显示状态、象限、坐标、截止日、动量、标签；双击打开详情 |
+| 动量 / 截止日 | 图上右键 → 「动量 / 截止日期」 |
+| 详情 / 笔记 | 双击点或树节点；「添加说明」后才创建文档 |
+| 拆解 | 右键节点 → 「拆解」；`Enter` 在当前节点**之后**插入、`Tab`/`Shift+Tab` 缩进、`Alt+↑/↓` 换位、`↑/↓` 选行、`Alt+←/→` 折叠展开；拖动行左侧把手可换位/换父级（拖到行中间 = 成为子节点） |
+| 待办项 | 说明里输入 `[] ` 生成待办；排序用剪切/粘贴（编辑器内不做拖拽，避免影响选中文字） |
+| 完成 | 树或详情勾选（级联子节点），点上会移除、树里保留 |
 
 
 ## 目录
@@ -99,7 +120,9 @@ src/
   lib/                    # 日期/板、筛选、树工具
   store/                  # Zustand
 src-tauri/src/lib.rs      # SQLite schema、命令、顺延/动量/统计
-scripts/verify.mjs        # E2E 冒烟（CDP 连接运行中的应用）
+scripts/verify.mjs        # E2E 回归（CDP 连接运行中的应用）
+scripts/verify2.mjs       # E2E 拖拽/拆解/编辑器
+scripts/reset-dev-db.ps1  # 重置开发实例测试库
 scripts/generate-icons.py # 生成 Tauri 图标与 favicon
 ```
 

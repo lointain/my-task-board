@@ -1,0 +1,133 @@
+/**
+ * 手动 E2E 冒烟脚本：需要先运行 `pnpm tauri dev`，
+ * 并以 `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9222` 启动。
+ *
+ *   node scripts/verify.mjs
+ */
+import { chromium } from "playwright-core";
+
+const PORT = process.env.CDP_PORT ?? "9222";
+const browser = await chromium.connectOverCDP(`http://127.0.0.1:${PORT}`);
+const page = browser.contexts()[0].pages()[0];
+const errors = [];
+page.on("pageerror", (error) => errors.push(error.message));
+page.on("console", (msg) => {
+  if (msg.type() === "error") errors.push(msg.text());
+});
+
+const checks = [];
+const check = (name, ok, extra = "") => {
+  checks.push({ name, ok, extra });
+  console.log(`${ok ? "PASS" : "FAIL"}  ${name}${extra ? `  (${extra})` : ""}`);
+};
+
+const stamp = Date.now().toString().slice(-5);
+const project = `项目 ${stamp}`;
+const child = `子任务 ${stamp}`;
+
+await page.reload();
+await page.waitForTimeout(1200);
+
+// 1. 新建项目
+await page.getByRole("button", { name: "项目", exact: true }).first().click();
+await page.getByPlaceholder("例如：TaskBoard 开发").fill(project);
+await page.getByRole("button", { name: "创建", exact: true }).click();
+await page.waitForTimeout(700);
+check("新建项目", (await page.locator("body").innerText()).includes(project));
+
+// 2. 拆解 + 新建子任务 + 改名
+const projectRow = page.getByText(project, { exact: true }).last();
+await projectRow.click({ button: "right" });
+await page.getByRole("button", { name: "拆解", exact: true }).click();
+await page.waitForTimeout(400);
+await page.getByRole("button", { name: "新建子任务", exact: true }).click();
+await page.waitForTimeout(400);
+const input = page.locator("[data-decomp-task] input").last();
+await input.fill(child);
+await input.blur();
+await page.waitForTimeout(600);
+await page.getByRole("button", { name: "完成", exact: true }).click();
+await page.waitForTimeout(500);
+check("拆解出子任务", (await page.locator("body").innerText()).includes(child));
+
+// 3. 拖到图上
+const svg = page.locator('svg[aria-label="重要性紧迫性四象限任务图"]');
+await page.getByText(child, { exact: true }).last().dragTo(svg, {
+  targetPosition: { x: 320, y: 280 },
+});
+await page.waitForTimeout(1000);
+check("拖入生成承诺点", (await page.locator("g.chart-point").count()) > 0);
+
+// 4. 拖动点并验证持久化
+const point = page.locator("g.chart-point").first();
+const before = await point.getAttribute("transform");
+const circle = point.locator("circle").last();
+const box = await circle.boundingBox();
+if (box) {
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 + 55, box.y + box.height / 2 - 35, { steps: 8 });
+  await page.mouse.up();
+  await page.waitForTimeout(900);
+}
+const after = await point.getAttribute("transform");
+check("拖动点改变坐标", before !== after);
+await page.reload();
+await page.waitForTimeout(1000);
+const reloaded = await page.locator("g.chart-point").first().getAttribute("transform");
+check("坐标持久化", reloaded === after);
+
+// 5. 详情 + 笔记
+await page.locator("g.chart-point").first().locator("circle").last().dblclick();
+await page.waitForTimeout(500);
+check("双击打开详情", (await page.locator("body").innerText()).includes("任务详情"));
+const addNote = page.getByRole("button", { name: "添加说明", exact: true });
+if (await addNote.count()) {
+  await addNote.click();
+  await page.waitForTimeout(300);
+  await page.locator(".tiptap").first().click();
+  await page.locator(".tiptap").first().type("冒烟笔记");
+  await page.getByRole("button", { name: "保存", exact: true }).click();
+  await page.waitForTimeout(800);
+  await page.locator("g.chart-point").first().locator("circle").last().dblclick();
+  await page.waitForTimeout(500);
+  check("笔记保存", (await page.locator("body").innerText()).includes("冒烟笔记"));
+  await page.getByRole("button", { name: "取消", exact: true }).click();
+}
+
+// 6. 动量/截止日
+await page.locator("g.chart-point").first().locator("circle").last().click({ button: "right" });
+await page.waitForTimeout(300);
+await page.getByRole("button", { name: "动量 / 截止日期", exact: true }).click();
+await page.waitForTimeout(300);
+await page.locator('input[type="date"]').last().fill("2026-12-31");
+await page.getByRole("button", { name: "保存", exact: true }).click();
+await page.waitForTimeout(900);
+check("设置截止日", (await page.locator("body").innerText()).includes("12-31"));
+
+// 7. 完成 → 点消失、树保留
+await page.locator('button[title="完成（级联子任务）"]').last().click();
+await page.waitForTimeout(900);
+check("完成后点图消失", (await page.locator("g.chart-point").count()) === 0);
+check("完成后树保留", (await page.locator("body").innerText()).includes(child));
+
+// 8. 周统计
+await page.getByRole("button", { name: "周统计", exact: true }).click();
+await page.waitForTimeout(600);
+const statsText = await page.locator("body").innerText();
+check("周统计记录完成", /完成\s*\d+/.test(statsText) && statsText.includes("本周完成"));
+await page.getByRole("button", { name: "关闭", exact: true }).last().click();
+
+// 9. 设置里的标签组
+await page.locator('button[title="设置"]').click();
+await page.waitForTimeout(400);
+check("设置打开", (await page.locator("body").innerText()).includes("标签组"));
+await page.getByRole("button", { name: "立即备份", exact: true }).click();
+await page.waitForTimeout(1200);
+check("备份可用", /data-\d{8}/.test(await page.locator("body").innerText()));
+
+check("无运行时报错", errors.length === 0, errors.join(" | "));
+
+console.log(`\n${checks.filter((c) => c.ok).length}/${checks.length} 通过`);
+await browser.close();
+process.exitCode = checks.every((c) => c.ok) ? 0 : 1;

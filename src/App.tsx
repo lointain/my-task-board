@@ -1,0 +1,321 @@
+import { BarChart3, CalendarDays, ListTree, Plus, Settings2, Sparkles } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ContextMenu, type MenuItem } from "./components/ContextMenu";
+import { DecompositionModal } from "./components/DecompositionModal";
+import { FilterBar } from "./components/FilterBar";
+import { MomentumModal } from "./components/MomentumModal";
+import { ProjectModal } from "./components/ProjectModal";
+import { QuadrantChart } from "./components/QuadrantChart";
+import { SettingsModal } from "./components/SettingsModal";
+import { TaskDetailModal } from "./components/TaskDetailModal";
+import { TaskTree } from "./components/TaskTree";
+import { WeeklyStatsModal } from "./components/WeeklyStatsModal";
+import { WeekStrip } from "./components/WeekStrip";
+import type { Task } from "./data/types";
+import { BOARD_LABEL, rootOf } from "./lib/board";
+import { matchesFilter } from "./lib/filter";
+import { useAppStore } from "./store/useAppStore";
+
+interface MenuState {
+  taskId: string;
+  x: number;
+  y: number;
+  source: "tree" | "chart";
+}
+
+export default function App() {
+  const data = useAppStore((state) => state.data);
+  const loading = useAppStore((state) => state.loading);
+  const error = useAppStore((state) => state.error);
+  const clearError = useAppStore((state) => state.clearError);
+  const load = useAppStore((state) => state.load);
+  const reload = useAppStore((state) => state.reload);
+  const board = useAppStore((state) => state.board);
+  const filters = useAppStore((state) => state.filtersByBoard[state.board]);
+  const selectedId = useAppStore((state) => state.selectedId);
+  const taskTags = useAppStore((state) => state.taskTags);
+  const select = useAppStore((state) => state.select);
+  const placeTask = useAppStore((state) => state.placeTask);
+  const movePlacement = useAppStore((state) => state.movePlacement);
+  const removePlacement = useAppStore((state) => state.removePlacement);
+  const createTask = useAppStore((state) => state.createTask);
+  const deleteTask = useAppStore((state) => state.deleteTask);
+
+  const [detailId, setDetailId] = useState<string | null>(null);
+  const [decompRootId, setDecompRootId] = useState<string | null>(null);
+  const [statsOpen, setStatsOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [projectOpen, setProjectOpen] = useState(false);
+  const [momentumTaskId, setMomentumTaskId] = useState<string | null>(null);
+  const [menu, setMenu] = useState<MenuState | null>(null);
+  const lastDayRef = useRef("");
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  useEffect(() => {
+    lastDayRef.current = new Date().toDateString();
+    const timer = window.setInterval(() => {
+      const today = new Date().toDateString();
+      if (today !== lastDayRef.current) {
+        lastDayRef.current = today;
+        void reload();
+      }
+    }, 60_000);
+    return () => window.clearInterval(timer);
+  }, [reload]);
+
+  const taskMap = useMemo(
+    () => new Map((data?.tasks ?? []).map((task) => [task.id, task])),
+    [data?.tasks],
+  );
+
+  const chartPlacements = useMemo(() => {
+    const placements = data?.placements ?? [];
+    return board === "week" ? placements : placements.filter((p) => p.board === board);
+  }, [board, data?.placements]);
+
+  const hiddenCount = useMemo(() => {
+    let count = 0;
+    for (const placement of chartPlacements) {
+      const task = taskMap.get(placement.taskId);
+      if (!task || task.status === "done" || task.status === "archived") continue;
+      if (!matchesFilter(task, filters, taskTags[task.id] ?? [])) {
+        count += 1;
+      }
+    }
+    return count;
+  }, [chartPlacements, filters, taskMap, taskTags]);
+
+  const detailTask = detailId ? (taskMap.get(detailId) ?? null) : null;
+  const momentumTask = momentumTaskId ? (taskMap.get(momentumTaskId) ?? null) : null;
+  const momentumPlacement = momentumTaskId
+    ? (data?.placements.find((p) => p.taskId === momentumTaskId) ?? null)
+    : null;
+  const menuTask = menu ? taskMap.get(menu.taskId) : null;
+  const menuPlacement = menu ? data?.placements.find((p) => p.taskId === menu.taskId) : null;
+
+  const openDecompose = useCallback(
+    (task: Task) => {
+      const root = rootOf(task.id, taskMap);
+      setDecompRootId(root?.id ?? task.id);
+    },
+    [taskMap],
+  );
+
+  const menuItems = useMemo<MenuItem[]>(() => {
+    if (!menuTask) return [];
+    const items: MenuItem[] = [
+      {
+        label: "详情",
+        onClick: () => setDetailId(menuTask.id),
+      },
+      {
+        label: "拆解",
+        onClick: () => openDecompose(menuTask),
+      },
+      {
+        label: "新建子任务",
+        icon: Plus,
+        onClick: () => {
+          void createTask({ title: "新任务", parentId: menuTask.id });
+          const root = rootOf(menuTask.id, taskMap);
+          if (root) setDecompRootId(root.id);
+        },
+      },
+    ];
+    if (menuPlacement) {
+      items.push({
+        label: "动量 / 截止日期",
+        icon: CalendarDays,
+        onClick: () => setMomentumTaskId(menuTask.id),
+      });
+      items.push({
+        label: "从图上移除",
+        onClick: () => void removePlacement(menuTask.id),
+      });
+    }
+    items.push({
+      label: "删除",
+      danger: true,
+      onClick: () => {
+        if (window.confirm(`删除「${menuTask.title}」及其子任务？`)) {
+          void deleteTask(menuTask.id);
+        }
+      },
+    });
+    return items;
+  }, [createTask, deleteTask, menuPlacement, menuTask, openDecompose, removePlacement, taskMap]);
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[var(--bg)] text-sm text-slate-500">
+        <Sparkles size={16} className="mr-2 animate-pulse text-emerald-300" />
+        正在加载本地数据…
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-screen flex-col overflow-hidden bg-[var(--bg)] text-[var(--text)]">
+      <header className="flex h-14 shrink-0 items-center gap-4 border-b border-[var(--line)] bg-[var(--panel-2)] px-4">
+        <div className="flex shrink-0 items-center gap-2.5">
+          <div className="grid h-7 w-7 grid-cols-2 gap-[2px]">
+            <span className="rounded-[2px] bg-emerald-400" />
+            <span className="rounded-[2px] bg-red-400" />
+            <span className="rounded-[2px] bg-slate-500" />
+            <span className="rounded-[2px] bg-amber-400" />
+          </div>
+          <div className="leading-tight">
+            <div className="text-sm font-semibold tracking-tight">TaskBoard</div>
+            <div className="text-[10px] text-slate-500">local-first · 承诺图</div>
+          </div>
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <WeekStrip />
+        </div>
+
+        <div className="flex shrink-0 items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setProjectOpen(true)}
+            className="flex h-8 items-center gap-1.5 rounded-lg bg-emerald-400 px-3 text-[11px] font-medium text-emerald-950 hover:bg-emerald-300"
+          >
+            <Plus size={13} /> 项目
+          </button>
+          <button
+            type="button"
+            onClick={() => setStatsOpen(true)}
+            className="flex h-8 items-center gap-1.5 rounded-lg border border-[var(--line)] bg-[var(--panel)] px-2.5 text-[11px] text-slate-300 hover:bg-white/[0.04]"
+          >
+            <BarChart3 size={13} /> 周统计
+          </button>
+          <button
+            type="button"
+            onClick={() => setSettingsOpen(true)}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--panel)] text-slate-400 hover:text-slate-200"
+            title="设置"
+          >
+            <Settings2 size={14} />
+          </button>
+        </div>
+      </header>
+
+      <div className="flex min-h-0 flex-1">
+        <main className="flex min-w-0 flex-1 flex-col gap-2 p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <h1 className="text-sm font-semibold tracking-tight text-slate-200">
+                {BOARD_LABEL[board]}承诺图
+              </h1>
+              <span className="text-[10px] text-slate-500">
+                {board === "week" ? "日板聚合 + 周级承诺" : "拖点调整 · 右键动量"}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 text-[10px] text-slate-500">
+              <span className="rounded-full border border-[var(--line)] bg-[var(--panel)] px-2 py-0.5">
+                {chartPlacements.length} 承诺
+              </span>
+            </div>
+          </div>
+
+          <FilterBar hiddenCount={hiddenCount} />
+
+          <section className="dot-grid relative min-h-0 flex-1 overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--panel)]">
+            <QuadrantChart
+              board={board}
+              placements={data?.placements ?? []}
+              tasks={data?.tasks ?? []}
+              taskTags={taskTags}
+              tags={data?.tags ?? []}
+              settings={data?.settings ?? {}}
+              filter={filters}
+              selectedId={selectedId}
+              onSelect={select}
+              onOpenDetail={setDetailId}
+              onMove={(taskId, x, y) => void movePlacement(taskId, x, y)}
+              onDropTask={(taskId, x, y) => void placeTask(taskId, x, y)}
+              onContextMenu={(taskId, x, y) => setMenu({ taskId, x, y, source: "chart" })}
+            />
+          </section>
+
+          <div className="flex items-center gap-3 px-1 text-[10px] text-slate-500">
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-[var(--q1)]" /> Q1 立即
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-[var(--q2)]" /> Q2 安排
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-[var(--q3)]" /> Q3 限时
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-[var(--q4)]" /> Q4 删/归档
+            </span>
+            <span className="ml-auto text-slate-600">
+              颜色 = {data?.settings.color_by === "project" ? "项目" : "标签组"} · 拖拽 / 右键 /
+              双击
+            </span>
+          </div>
+        </main>
+
+        <aside className="flex w-[370px] shrink-0 flex-col border-l border-[var(--line)] bg-[var(--panel-2)]">
+          <TaskTree
+            onOpenDetail={setDetailId}
+            onContextMenu={(task, x, y) => setMenu({ taskId: task.id, x, y, source: "tree" })}
+            onNewProject={() => setProjectOpen(true)}
+          />
+        </aside>
+      </div>
+
+      <footer className="flex h-8 shrink-0 items-center gap-4 border-t border-[var(--line)] bg-[var(--panel-2)] px-4 text-[10px] text-slate-500">
+        <span className="flex items-center gap-1.5">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+          SQLite · WAL · 本地
+        </span>
+        <span className="text-slate-700">|</span>
+        <span>Tauri 2 · React 19 · D3 · TipTap</span>
+        <span className="ml-auto flex items-center gap-1 text-slate-600">
+          <ListTree size={11} /> 拖动树节点到左侧图 = 承诺
+        </span>
+      </footer>
+
+      <TaskDetailModal task={detailTask} onClose={() => setDetailId(null)} />
+      <DecompositionModal rootId={decompRootId} onClose={() => setDecompRootId(null)} />
+      <WeeklyStatsModal
+        open={statsOpen}
+        onClose={() => setStatsOpen(false)}
+        onOpenTask={(id) => {
+          setStatsOpen(false);
+          setDetailId(id);
+        }}
+      />
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <ProjectModal open={projectOpen} onClose={() => setProjectOpen(false)} />
+      <MomentumModal
+        task={momentumTask}
+        placement={momentumPlacement}
+        onClose={() => setMomentumTaskId(null)}
+      />
+
+      {menu ? (
+        <ContextMenu x={menu.x} y={menu.y} items={menuItems} onClose={() => setMenu(null)} />
+      ) : null}
+
+      {error ? (
+        <div className="fixed bottom-12 left-1/2 z-[70] flex max-w-[80vw] -translate-x-1/2 items-center gap-3 rounded-lg border border-red-400/30 bg-red-950/90 px-4 py-2.5 text-[11px] text-red-100 shadow-xl">
+          <span className="min-w-0 flex-1">{error}</span>
+          <button
+            type="button"
+            onClick={clearError}
+            className="rounded px-2 py-1 text-red-200 hover:bg-white/10"
+          >
+            关闭
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}

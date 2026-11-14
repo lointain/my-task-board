@@ -1,0 +1,206 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+  --bg: #0b0f14;
+  --panel: #111820;
+  --panel-2: #0e141b;
+  --line: #1f2a37;
+  --line-soft: #17212c;
+  --text: #e6edf3;
+  --muted: #8b98a9;
+  --accent: #34d399;
+  --q1: #f87171;
+  --q2: #34d399;
+  --q3: #fbbf24;
+  --q4: #64748b;
+  font-family:
+    "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: rgb(52 211 153 / 30%);
+}
+
+/* thin scrollbars */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2a3745 transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #2a3745;
+  border-radius: 999px;
+}
+
+/* ------------------------------------------------------------------ */
+/* TipTap                                                              */
+/* ------------------------------------------------------------------ */
+
+.tiptap {
+  outline: none;
+  min-height: 220px;
+  font-size: 14px;
+  line-height: 1.75;
+  color: var(--text);
+}
+
+.tiptap > * + * {
+  margin-top: 0.6em;
+}
+
+.tiptap h1,
+.tiptap h2,
+.tiptap h3 {
+  font-weight: 650;
+  line-height: 1.3;
+  margin-top: 1.1em;
+}
+
+.tiptap h1 {
+  font-size: 1.35rem;
+}
+
+.tiptap h2 {
+  font-size: 1.1rem;
+}
+
+.tiptap h3 {
+  font-size: 1rem;
+}
+
+.tiptap p {
+  margin: 0;
+}
+
+.tiptap ul,
+.tiptap ol {
+  padding-left: 1.25rem;
+}
+
+.tiptap ul {
+  list-style: disc;
+}
+
+.tiptap ol {
+  list-style: decimal;
+}
+
+.tiptap blockquote {
+  border-left: 2px solid var(--line);
+  padding-left: 0.8rem;
+  color: var(--muted);
+}
+
+.tiptap code {
+  background: rgb(255 255 255 / 7%);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+  font-family: "Cascadia Code", Consolas, monospace;
+  font-size: 0.9em;
+}
+
+.tiptap pre {
+  background: #0a1017;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.75rem;
+  overflow-x: auto;
+}
+
+.tiptap pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.tiptap a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.tiptap p.is-editor-empty:first-child::before {
+  color: #5b6878;
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* task list */
+.tiptap ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+
+.tiptap ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+}
+
+.tiptap ul[data-type="taskList"] li > label {
+  flex: 0 0 auto;
+  margin-top: 0.28rem;
+  user-select: none;
+}
+
+.tiptap ul[data-type="taskList"] li > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.tiptap ul[data-type="taskList"] input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.tiptap ul[data-type="taskList"] li[data-checked="true"] > div {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.tiptap ul[data-type="taskList"] ul[data-type="taskList"] {
+  padding-left: 1.1rem;
+  margin-top: 0.25rem;
+}
+
+/* subtle dotted background for the chart panel */
+.dot-grid {
+  background-image: radial-gradient(rgb(255 255 255 / 6%) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+
+.chart-point .halo {
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+
+.chart-point:hover .halo {
+  opacity: 0.2;
+}

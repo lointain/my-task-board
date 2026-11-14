@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="64" height="64">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0.62" y2="1">
+      <stop offset="0" stop-color="#18232f"/>
+      <stop offset="1" stop-color="#060a0e"/>
+    </linearGradient>
+    <linearGradient id="cell" x1="0" y1="0" x2="0.55" y2="1">
+      <stop offset="0" stop-color="#304052"/>
+      <stop offset="1" stop-color="#1e2a36"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="0.6" y2="1">
+      <stop offset="0" stop-color="#4ade80"/>
+      <stop offset="1" stop-color="#10b981"/>
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" rx="224" fill="url(#bg)"/>
+  <rect x="172.0" y="172.0" width="312.0" height="312.0" rx="65.8" fill="url(#accent)" stroke="#ffffff" stroke-opacity="0.09" stroke-width="3"/>
+  <rect x="540.0" y="172.0" width="312.0" height="312.0" rx="65.8" fill="url(#cell)" stroke="#ffffff" stroke-opacity="0.09" stroke-width="3"/>
+  <rect x="172.0" y="540.0" width="312.0" height="312.0" rx="65.8" fill="url(#cell)" stroke="#ffffff" stroke-opacity="0.09" stroke-width="3"/>
+  <rect x="540.0" y="540.0" width="312.0" height="312.0" rx="65.8" fill="url(#cell)" stroke="#ffffff" stroke-opacity="0.09" stroke-width="3"/>
+  <path d="M 246.9 340.5 L 306.2 396.6 L 415.4 265.6" fill="none" stroke="#04140e" stroke-width="37.4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

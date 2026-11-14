@@ -78,6 +78,7 @@ export function QuadrantChart({
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
+  const lastClickRef = useRef<{ id: string; at: number }>({ id: "", at: 0 });
   const [hover, setHover] = useState<{ taskId: string; x: number; y: number } | null>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
 
@@ -284,10 +285,11 @@ export function QuadrantChart({
 
     points
       .append("circle")
-      .attr("r", (d) => (d.task.id === selectedId ? 7.5 : 5.5))
+      .attr("class", "point-dot")
+      .attr("r", 5.5)
       .attr("fill", (d) => colorForTask(d.task, taskMap, d.tagIds, tags, settings))
-      .attr("stroke", (d) => (d.task.id === selectedId ? "#e6edf3" : "#0b0f14"))
-      .attr("stroke-width", (d) => (d.task.id === selectedId ? 2 : 1.5));
+      .attr("stroke", "#0b0f14")
+      .attr("stroke-width", 1.5);
 
     points
       .append("circle")
@@ -326,50 +328,75 @@ export function QuadrantChart({
     if (entries.length <= 40) {
       points
         .append("text")
+        .attr("class", "point-label")
         .attr("x", (d) => (d.placement.x < 18 ? -10 : 10))
         .attr("text-anchor", (d) => (d.placement.x < 18 ? "end" : "start"))
         .attr("y", 4)
-        .attr("fill", (d) => (d.task.id === selectedId ? "#e6edf3" : "#9aa7b7"))
+        .attr("fill", "#9aa7b7")
         .attr("font-size", 10)
         .attr("pointer-events", "none")
         .text((d) => shortTitle(d.task.title, 14));
     }
 
-    points
-      .on("click", (event, d) => {
-        event.stopPropagation();
-        if (draggingRef.current) return;
-        onSelect(d.task.id);
-      })
-      .on("dblclick", (event, d) => {
-        event.stopPropagation();
+    points.on("contextmenu", (event, d) => {
+      event.preventDefault();
+      event.stopPropagation();
+      onContextMenu(d.task.id, event.clientX, event.clientY);
+    });
+
+    // d3-drag 会在 mouseup 上 preventDefault，浏览器因此不再合成 click/dblclick，
+    // 所以“单击/双击”改由 drag 手势自己判定。
+    let moved = false;
+
+    const handleTap = (d: Entry) => {
+      const now = Date.now();
+      const last = lastClickRef.current;
+      if (last.id === d.task.id && now - last.at < 450) {
+        lastClickRef.current = { id: "", at: 0 };
         onOpenDetail(d.task.id);
-      })
-      .on("contextmenu", (event, d) => {
-        event.preventDefault();
-        event.stopPropagation();
-        onContextMenu(d.task.id, event.clientX, event.clientY);
-      });
+        return;
+      }
+      lastClickRef.current = { id: d.task.id, at: now };
+      onSelect(d.task.id);
+    };
+
+    // pointerdown 不经过 d3-drag，用它做稳定的双击判定
+    points.on("pointerdown", (event: PointerEvent, d) => {
+      if (event.button !== 0) return;
+      const now = Date.now();
+      const last = lastClickRef.current;
+      if (last.id === d.task.id && now - last.at < 450) {
+        lastClickRef.current = { id: "", at: 0 };
+        onOpenDetail(d.task.id);
+      }
+    });
 
     const dragBehavior = drag<SVGGElement, Entry>()
       .on("start", function () {
         draggingRef.current = true;
+        moved = false;
         setHover(null);
         select(this).raise();
       })
       .on("drag", function (event) {
+        moved = true;
         const nx = Math.max(0, Math.min(INNER_W, event.x));
         const ny = Math.max(0, Math.min(INNER_H, event.y));
         select(this).attr("transform", `translate(${nx},${ny})`);
       })
       .on("end", (event, d) => {
         draggingRef.current = false;
+        if (!moved) {
+          handleTap(d);
+          return;
+        }
         const nx = pixelToUrgency(event.x);
         const ny = Math.max(0, Math.min(100, 100 - (event.y / INNER_H) * 100));
         onMove(d.task.id, Math.round(nx), Math.round(ny));
       });
 
     points.call(dragBehavior);
+    // selectedId 不放进依赖：点击选中不能重建 SVG，否则第二次点击会落在新节点上，双击失效
   }, [
     entries,
     hiddenCount,
@@ -377,11 +404,28 @@ export function QuadrantChart({
     onMove,
     onOpenDetail,
     onSelect,
-    selectedId,
     settings,
     tags,
     taskMap,
   ]);
+
+  // 选中态单独更新
+  useEffect(() => {
+    const svgEl = svgRef.current;
+    if (!svgEl) return;
+    select(svgEl)
+      .selectAll<SVGGElement, Entry>("g.chart-point")
+      .each(function (d) {
+        const active = d?.task.id === selectedId;
+        const group = select(this);
+        group
+          .select("circle.point-dot")
+          .attr("r", active ? 7.5 : 5.5)
+          .attr("stroke", active ? "#e6edf3" : "#0b0f14")
+          .attr("stroke-width", active ? 2 : 1.5);
+        group.select("text.point-label").attr("fill", active ? "#e6edf3" : "#9aa7b7");
+      });
+  }, [selectedId, entries]);
 
   const dragging = useDragStore((state) => Boolean(state.taskId));
   const overChart = useDragStore((state) => state.over?.kind === "chart");

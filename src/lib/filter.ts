@@ -40,3 +40,27 @@ export function matchesFilter(
 
   return true;
 }
+
+/** 右侧树的搜索 / 到期过滤（不含状态条件）。 */
+export function matchesTreeFilter(
+  task: Task,
+  query: string,
+  dueFilter: "today" | "week" | "overdue" | null,
+  today = new Date(),
+): boolean {
+  const q = query.trim().toLowerCase();
+  if (q && !task.title.toLowerCase().includes(q)) {
+    if (!(task.noteText ?? "").toLowerCase().includes(q)) return false;
+  }
+
+  if (!dueFilter) return true;
+  if (!task.effectiveDue) return false;
+
+  const todayKey = dateKey(today);
+  if (dueFilter === "today") return task.effectiveDue === todayKey;
+  if (dueFilter === "overdue") return task.effectiveDue < todayKey;
+  const start = startOfWeek(today);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  return task.effectiveDue >= dateKey(start) && task.effectiveDue <= dateKey(end);
+}

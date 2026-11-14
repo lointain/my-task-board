@@ -1,5 +1,5 @@
 import { X } from "lucide-react";
-import { type ReactNode, useEffect } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 
 interface ModalProps {
   open: boolean;
@@ -26,6 +26,12 @@ export function Modal({
   dismissOnBackdrop = true,
   closeOnEscape = true,
 }: ModalProps) {
+  const guardRef = useRef(0);
+
+  useEffect(() => {
+    guardRef.current = Date.now();
+  }, [open]);
+
   useEffect(() => {
     if (!open || !closeOnEscape) return;
     const handler = (event: KeyboardEvent) => {
@@ -40,7 +46,10 @@ export function Modal({
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-6 backdrop-blur-[2px]"
       onMouseDown={(event) => {
-        if (dismissOnBackdrop && event.target === event.currentTarget) onClose();
+        // 打开后的同一次点击手势不要立刻把弹窗关掉
+        if (!dismissOnBackdrop) return;
+        if (Date.now() - guardRef.current < 250) return;
+        if (event.target === event.currentTarget) onClose();
       }}
     >
       <div

@@ -35,19 +35,14 @@ await page.getByRole("button", { name: "创建", exact: true }).click();
 await page.waitForTimeout(700);
 check("新建项目", (await page.locator("body").innerText()).includes(project));
 
-// 2. 拆解 + 新建子任务 + 改名
+// 2. 在右侧树里建子任务（不再有拆解弹窗）
 const projectRow = page.getByText(project, { exact: true }).last();
-await projectRow.click({ button: "right" });
-await page.getByRole("button", { name: "拆解", exact: true }).click();
-await page.waitForTimeout(400);
-await page.getByRole("button", { name: "新建子任务", exact: true }).click();
-await page.waitForTimeout(400);
-const input = page.locator("[data-decomp-task] input").last();
-await input.fill(child);
-await input.blur();
+await projectRow.click();
+await page.keyboard.press("Enter");
 await page.waitForTimeout(600);
-await page.getByRole("button", { name: "完成", exact: true }).click();
-await page.waitForTimeout(500);
+await page.keyboard.type(child);
+await page.keyboard.press("Enter");
+await page.waitForTimeout(700);
 check("拆解出子任务", (await page.locator("body").innerText()).includes(child));
 
 // 3. 拖到图上（指针拖拽）
@@ -95,23 +90,18 @@ await page.waitForTimeout(1000);
 const reloaded = await (await pointAt()).getAttribute("transform");
 check("坐标持久化", reloaded === after);
 
-// 5. 详情 + 笔记
+// 5. 详情 + 笔记（说明默认就在，不再需要“添加说明”）
+await (await pointAt()).locator("circle").last().dblclick({ force: true });
+await page.waitForTimeout(600);
+check("详情默认带说明编辑器", (await page.locator(".tiptap").count()) === 1);
+await page.locator(".tiptap").first().click();
+await page.locator(".tiptap").first().type("冒烟笔记");
+await page.getByRole("button", { name: "保存", exact: true }).click();
+await page.waitForTimeout(800);
 await (await pointAt()).locator("circle").last().dblclick({ force: true });
 await page.waitForTimeout(500);
-check("双击打开详情", (await page.locator("body").innerText()).includes("任务详情"));
-const addNote = page.getByRole("button", { name: "添加说明", exact: true });
-if (await addNote.count()) {
-  await addNote.click();
-  await page.waitForTimeout(300);
-  await page.locator(".tiptap").first().click();
-  await page.locator(".tiptap").first().type("冒烟笔记");
-  await page.getByRole("button", { name: "保存", exact: true }).click();
-  await page.waitForTimeout(800);
-  await (await pointAt()).locator("circle").last().dblclick({ force: true });
-  await page.waitForTimeout(500);
-  check("笔记保存", (await page.locator("body").innerText()).includes("冒烟笔记"));
-  await page.getByRole("button", { name: "取消", exact: true }).click();
-}
+check("笔记保存", (await page.locator("body").innerText()).includes("冒烟笔记"));
+await page.getByRole("button", { name: "取消", exact: true }).click();
 
 // 6. 动量/截止日
 await (await pointAt()).locator("circle").last().click({ button: "right", force: true });
@@ -125,7 +115,7 @@ check("设置截止日", (await page.locator("body").innerText()).includes("12-3
 
 // 7. 完成 → 点消失、树保留
 await page
-  .locator("[data-task-row]")
+  .locator("[data-tree-row]")
   .filter({ hasText: child })
   .locator('button[title="完成（级联子任务）"]')
   .first()
@@ -154,3 +144,4 @@ check("无运行时报错", errors.length === 0, errors.join(" | "));
 console.log(`\n${checks.filter((c) => c.ok).length}/${checks.length} 通过`);
 await browser.close();
 process.exitCode = checks.every((c) => c.ok) ? 0 : 1;
+

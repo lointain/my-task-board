@@ -18,6 +18,8 @@ interface AppStore {
   stats: StatsPayload | null;
   board: Board;
   selectedId: string | null;
+  /** 请求右侧树把某个节点展开并聚焦（"拆解"= 在树里直接编辑） */
+  treeFocus: { id: string; nonce: number } | null;
   filtersByBoard: Record<Board, FilterState>;
   loading: boolean;
   error: string | null;
@@ -25,6 +27,7 @@ interface AppStore {
   reload: () => Promise<void>;
   setBoard: (board: Board) => void;
   select: (id: string | null) => void;
+  focusInTree: (id: string) => void;
   setFilter: (board: Board, filter: FilterState) => void;
   resetFilter: (board: Board) => void;
   createTask: (input: {
@@ -94,6 +97,7 @@ export const useAppStore = create<AppStore>((set, get) => ({
   stats: null,
   board: currentBoard(),
   selectedId: null,
+  treeFocus: null,
   filtersByBoard: emptyFilters(),
   loading: true,
   error: null,
@@ -138,6 +142,11 @@ export const useAppStore = create<AppStore>((set, get) => ({
 
   setBoard: (board) => set({ board }),
   select: (id) => set({ selectedId: id }),
+  focusInTree: (id) =>
+    set((state) => ({
+      selectedId: id,
+      treeFocus: { id, nonce: (state.treeFocus?.nonce ?? 0) + 1 },
+    })),
   setFilter: (board, filter) =>
     set((state) => ({ filtersByBoard: { ...state.filtersByBoard, [board]: filter } })),
   resetFilter: (board) =>

@@ -7,11 +7,12 @@ import StarterKit from "@tiptap/starter-kit";
 import {
   Bold,
   Check,
+  ChevronDown,
+  ChevronRight,
   Image as ImageIcon,
   Italic,
   List,
   ListTodo,
-  Plus,
   Trash2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -148,20 +149,15 @@ export function TaskDetailModal({ task, onClose }: TaskDetailModalProps) {
   const [title, setTitle] = useState(task?.title ?? "");
   const [status, setStatus] = useState<TaskStatus>(task?.status ?? "todo");
   const [dueAt, setDueAt] = useState(task?.dueAt ?? "");
-  const [noteEnabled, setNoteEnabled] = useState(Boolean(task?.noteJson));
-  const [noteJson, setNoteJson] = useState<string | null>(task?.noteJson ?? null);
-  const [noteText, setNoteText] = useState<string | null>(task?.noteText ?? null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [propsOpen, setPropsOpen] = useState(false);
 
   useEffect(() => {
     if (!task) return;
     setTitle(task.title);
     setStatus(task.status);
     setDueAt(task.dueAt ?? "");
-    setNoteEnabled(Boolean(task.noteJson));
-    setNoteJson(task.noteJson);
-    setNoteText(task.noteText);
     setSelectedTags(taskTags[task.id] ?? []);
   }, [task, taskTags]);
 
@@ -175,30 +171,38 @@ export function TaskDetailModal({ task, onClose }: TaskDetailModalProps) {
         StarterKit.configure({ link: { openOnClick: false } }),
         Image,
         Placeholder.configure({
-          placeholder: "记录上下文、下一步、链接… 输入 `- [ ]` 创建待办",
+          placeholder: "记录上下文、下一步、链接… 输入 `[] ` 创建待办",
         }),
       ],
       content: parseNote(task?.noteJson ?? null),
       editorProps: { attributes: { class: "tiptap" } },
-      onUpdate: ({ editor: instance }) => {
-        setNoteJson(JSON.stringify(instance.getJSON()));
-        setNoteText(instance.getText());
-      },
     },
-    [task?.id, noteEnabled],
+    [task?.id],
   );
 
   if (!task) return null;
 
+  const tagSummary = (() => {
+    if (selectedTags.length === 0) return "未设置属性";
+    const names = selectedTags
+      .map((id) => data?.tags.find((tag) => tag.id === id)?.name)
+      .filter(Boolean);
+    return names.length > 0 ? names.join(" · ") : "未设置属性";
+  })();
+
   const save = async () => {
     setSaving(true);
     try {
+      // 说明是否存在由内容决定：空的编辑器不落库
+      const empty = !editor || editor.isEmpty;
+      const json = empty ? "" : JSON.stringify(editor.getJSON());
+      const text = empty ? "" : editor.getText();
       await repo.taskUpdate(task.id, {
         title: title.trim() || task.title,
         status,
         dueAt,
-        noteJson: noteEnabled ? (noteJson ?? "") : "",
-        noteText: noteEnabled ? (noteText ?? "") : "",
+        noteJson: json,
+        noteText: text,
       });
       await repo.taskSetTags(task.id, selectedTags);
       await reload();
@@ -304,85 +308,83 @@ export function TaskDetailModal({ task, onClose }: TaskDetailModalProps) {
           </div>
         </div>
 
-        <div className="rounded-xl border border-[var(--line)] bg-[var(--panel-2)] p-3.5">
-          <div className="mb-2 flex items-center justify-between">
-            <h3 className="text-xs font-medium text-slate-300">属性</h3>
-            <span className="text-[10px] text-slate-600">单选/多选标签组</span>
-          </div>
-          <TagPicker
-            groups={data?.tagGroups ?? []}
-            tags={data?.tags ?? []}
-            selected={selectedTags}
-            onChange={setSelectedTags}
-          />
+        <div className="rounded-xl border border-[var(--line)] bg-[var(--panel-2)]">
+          <button
+            type="button"
+            onClick={() => setPropsOpen((open) => !open)}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left"
+          >
+            {propsOpen ? (
+              <ChevronDown size={13} className="text-slate-500" />
+            ) : (
+              <ChevronRight size={13} className="text-slate-500" />
+            )}
+            <span className="text-xs font-medium text-slate-300">属性</span>
+            <span className="min-w-0 flex-1 truncate text-[10px] text-slate-500">{tagSummary}</span>
+            <span className="shrink-0 text-[9px] text-slate-600">标签组</span>
+          </button>
+          {propsOpen ? (
+            <div className="border-t border-[var(--line-soft)] px-3.5 pb-3 pt-2.5">
+              <TagPicker
+                groups={data?.tagGroups ?? []}
+                tags={data?.tags ?? []}
+                selected={selectedTags}
+                onChange={setSelectedTags}
+              />
+            </div>
+          ) : null}
         </div>
 
         <div className="rounded-xl border border-[var(--line)] bg-[var(--panel-2)]">
           <div className="flex items-center justify-between border-b border-[var(--line-soft)] px-3 py-2">
             <h3 className="text-xs font-medium text-slate-300">说明</h3>
-            {!noteEnabled ? (
-              <button
-                type="button"
-                onClick={() => setNoteEnabled(true)}
-                className="flex items-center gap-1 text-[10px] text-emerald-300 hover:text-emerald-200"
-              >
-                <Plus size={12} /> 添加说明
-              </button>
-            ) : null}
+            <span className="text-[9px] text-slate-600">可留空</span>
           </div>
-          {noteEnabled ? (
-            <>
-              <div className="flex items-center gap-0.5 border-b border-[var(--line-soft)] px-2 py-1">
-                <EditorButton
-                  label="粗体"
-                  active={editor?.isActive("bold")}
-                  onClick={() => editor?.chain().focus().toggleBold().run()}
-                >
-                  <Bold size={13} />
-                </EditorButton>
-                <EditorButton
-                  label="斜体"
-                  active={editor?.isActive("italic")}
-                  onClick={() => editor?.chain().focus().toggleItalic().run()}
-                >
-                  <Italic size={13} />
-                </EditorButton>
-                <EditorButton
-                  label="无序列表"
-                  active={editor?.isActive("bulletList")}
-                  onClick={() => editor?.chain().focus().toggleBulletList().run()}
-                >
-                  <List size={13} />
-                </EditorButton>
-                <EditorButton
-                  label="待办列表"
-                  active={editor?.isActive("taskList")}
-                  onClick={() => editor?.chain().focus().toggleTaskList().run()}
-                >
-                  <ListTodo size={13} />
-                </EditorButton>
-                <EditorButton
-                  label="插入图片 URL"
-                  onClick={() => {
-                    const src = window.prompt("图片 URL");
-                    if (src?.trim()) {
-                      editor?.chain().focus().setImage({ src: src.trim() }).run();
-                    }
-                  }}
-                >
-                  <ImageIcon size={13} />
-                </EditorButton>
-                <span className="ml-auto text-[9px] text-slate-600">支持 `[]` 快捷生成待办</span>
-              </div>
-              <div className="max-h-[320px] overflow-y-auto px-3.5 py-3">
-                <EditorContent editor={editor} />
-              </div>
-            </>
-          ) : (
-            <div className="px-4 py-8 text-center text-[11px] text-slate-500">
-              这个任务没有说明。说明是可选的。
-            </div>
-          )}
+          <div className="flex items-center gap-0.5 border-b border-[var(--line-soft)] px-2 py-1">
+            <EditorButton
+              label="粗体"
+              active={editor?.isActive("bold")}
+              onClick={() => editor?.chain().focus().toggleBold().run()}
+            >
+              <Bold size={13} />
+            </EditorButton>
+            <EditorButton
+              label="斜体"
+              active={editor?.isActive("italic")}
+              onClick={() => editor?.chain().focus().toggleItalic().run()}
+            >
+              <Italic size={13} />
+            </EditorButton>
+            <EditorButton
+              label="无序列表"
+              active={editor?.isActive("bulletList")}
+              onClick={() => editor?.chain().focus().toggleBulletList().run()}
+            >
+              <List size={13} />
+            </EditorButton>
+            <EditorButton
+              label="待办列表"
+              active={editor?.isActive("taskList")}
+              onClick={() => editor?.chain().focus().toggleTaskList().run()}
+            >
+              <ListTodo size={13} />
+            </EditorButton>
+            <EditorButton
+              label="插入图片 URL"
+              onClick={() => {
+                const src = window.prompt("图片 URL");
+                if (src?.trim()) {
+                  editor?.chain().focus().setImage({ src: src.trim() }).run();
+                }
+              }}
+            >
+              <ImageIcon size={13} />
+            </EditorButton>
+            <span className="ml-auto text-[9px] text-slate-600">`[]` 生成待办</span>
+          </div>
+          <div className="max-h-[320px] overflow-y-auto px-3.5 py-3">
+            <EditorContent editor={editor} />
+          </div>
         </div>
       </div>
     </Modal>

@@ -1,7 +1,6 @@
 import { BarChart3, CalendarDays, ListTree, Plus, Settings2, Sparkles } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ContextMenu, type MenuItem } from "./components/ContextMenu";
-import { DecompositionModal } from "./components/DecompositionModal";
 import { DragGhost } from "./components/DragGhost";
 import { FilterBar } from "./components/FilterBar";
 import { MomentumModal } from "./components/MomentumModal";
@@ -12,8 +11,7 @@ import { TaskDetailModal } from "./components/TaskDetailModal";
 import { TaskTree } from "./components/TaskTree";
 import { WeeklyStatsModal } from "./components/WeeklyStatsModal";
 import { WeekStrip } from "./components/WeekStrip";
-import type { Task } from "./data/types";
-import { BOARD_LABEL, rootOf } from "./lib/board";
+import { BOARD_LABEL } from "./lib/board";
 import { clientToChartPoint } from "./lib/chartGeometry";
 import { registerDropHandler } from "./lib/drag";
 import { matchesFilter } from "./lib/filter";
@@ -38,6 +36,7 @@ export default function App() {
   const selectedId = useAppStore((state) => state.selectedId);
   const taskTags = useAppStore((state) => state.taskTags);
   const select = useAppStore((state) => state.select);
+  const focusInTree = useAppStore((state) => state.focusInTree);
   const setBoard = useAppStore((state) => state.setBoard);
   const placeTaskOn = useAppStore((state) => state.placeTaskOn);
   const movePlacement = useAppStore((state) => state.movePlacement);
@@ -46,7 +45,6 @@ export default function App() {
   const deleteTask = useAppStore((state) => state.deleteTask);
 
   const [detailId, setDetailId] = useState<string | null>(null);
-  const [decompRootId, setDecompRootId] = useState<string | null>(null);
   const [statsOpen, setStatsOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [projectOpen, setProjectOpen] = useState(false);
@@ -116,14 +114,6 @@ export default function App() {
   const menuTask = menu ? taskMap.get(menu.taskId) : null;
   const menuPlacement = menu ? data?.placements.find((p) => p.taskId === menu.taskId) : null;
 
-  const openDecompose = useCallback(
-    (task: Task) => {
-      const root = rootOf(task.id, taskMap);
-      setDecompRootId(root?.id ?? task.id);
-    },
-    [taskMap],
-  );
-
   const menuItems = useMemo<MenuItem[]>(() => {
     if (!menuTask) return [];
     const items: MenuItem[] = [
@@ -132,16 +122,15 @@ export default function App() {
         onClick: () => setDetailId(menuTask.id),
       },
       {
-        label: "拆解",
-        onClick: () => openDecompose(menuTask),
+        label: "在树中编辑",
+        onClick: () => focusInTree(menuTask.id),
       },
       {
         label: "新建子任务",
         icon: Plus,
         onClick: () => {
           void createTask({ title: "新任务", parentId: menuTask.id });
-          const root = rootOf(menuTask.id, taskMap);
-          if (root) setDecompRootId(root.id);
+          focusInTree(menuTask.id);
         },
       },
     ];
@@ -166,7 +155,7 @@ export default function App() {
       },
     });
     return items;
-  }, [createTask, deleteTask, menuPlacement, menuTask, openDecompose, removePlacement, taskMap]);
+  }, [createTask, deleteTask, focusInTree, menuPlacement, menuTask, removePlacement]);
 
   if (loading) {
     return (
@@ -302,7 +291,6 @@ export default function App() {
       </footer>
 
       <TaskDetailModal task={detailTask} onClose={() => setDetailId(null)} />
-      <DecompositionModal rootId={decompRootId} onClose={() => setDecompRootId(null)} />
       <WeeklyStatsModal
         open={statsOpen}
         onClose={() => setStatsOpen(false)}

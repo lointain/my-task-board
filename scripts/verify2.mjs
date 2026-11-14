@@ -31,116 +31,146 @@ await page.getByPlaceholder("例如：TaskBoard 开发").fill(project);
 await page.getByRole("button", { name: "创建", exact: true }).click();
 await page.waitForTimeout(800);
 
-// 右键 → 拆解
-await page.getByText(project, { exact: true }).last().click({ button: "right" });
-await page.getByRole("button", { name: "拆解", exact: true }).click();
-await page.waitForTimeout(500);
+// --- 右侧树直接编辑：回车新建子任务 + 改名 ---
+const treeRows = () => page.locator("aside [data-tree-row]");
+const treeTitles = () =>
+  page.$$eval("aside [data-tree-row]", (els) =>
+    els.map((el) => el.querySelector("span.truncate")?.textContent?.trim() ?? ""),
+  );
+const focusedRowId = () =>
+  page.evaluate(() => document.activeElement?.getAttribute("data-tree-row") ?? "");
 
-// --- 根节点快捷键：回车应新建子节点并聚焦 ---
-const rootInput = page.locator("[data-decomp-task] input").first();
-await rootInput.click();
-await rootInput.press("Enter");
-await page.waitForTimeout(900);
-const rowCount = await page.locator("[data-decomp-task]").count();
-check("根节点回车新建子节点", rowCount === 2, `rows=${rowCount}`);
-
-// 新节点已聚焦，直接改名
+await page.getByText(project, { exact: true }).last().click();
+await page.keyboard.press("Enter");
+await page.waitForTimeout(700);
+check(
+  "回车新建子节点并进入改名",
+  (await page.locator("aside [data-tree-row] input").count()) === 1,
+);
 await page.keyboard.type(childAName);
-await page.keyboard.press("Tab"); // 已经是子节点，Tab 无同级可缩进 → 不应崩
-await page.waitForTimeout(400);
-await page.locator("[data-decomp-task] input").first().blur().catch(() => {});
-await page.waitForTimeout(600);
+await page.keyboard.press("Enter");
+await page.waitForTimeout(700);
 
-// 再给根加一个子节点：聚焦根，回车
-await rootInput.click();
-await rootInput.press("Enter");
-await page.waitForTimeout(800);
+// 焦点回到刚建的行，再回车建同级
+await page.keyboard.press("Enter");
+await page.waitForTimeout(600);
 await page.keyboard.type(childBName);
-await page.locator("[data-decomp-task] input").first().click();
-await page.waitForTimeout(800);
-const rowsAfter = await page.locator("[data-decomp-task]").count();
-check("再次回车再建一个子节点", rowsAfter === 3, `rows=${rowsAfter}`);
+await page.keyboard.press("Enter");
+await page.waitForTimeout(700);
+const titlesAfterAdd = await treeTitles();
+check(
+  "再次回车建同级",
+  titlesAfterAdd.includes(childAName) && titlesAfterAdd.includes(childBName),
+  JSON.stringify(titlesAfterAdd.slice(-3)),
+);
 
 // --- 方向键导航 ---
-const inputs = page.locator("[data-decomp-task] input");
-await inputs.nth(0).click();
+const projectIndex = (await treeTitles()).indexOf(project);
+await page.getByText(project, { exact: true }).last().click();
 await page.keyboard.press("ArrowDown");
 await page.waitForTimeout(300);
-const focusedIndex = await page.evaluate(() => {
-  const all = [...document.querySelectorAll("[data-decomp-task] input")];
-  return all.indexOf(document.activeElement);
-});
-check("↓ 移动焦点", focusedIndex === 1, `focused=${focusedIndex}`);
+const rowIds = await page.$$eval("aside [data-tree-row]", (els) =>
+  els.map((el) => el.getAttribute("data-tree-row")),
+);
+check("↓ 移动焦点", (await focusedRowId()) === rowIds[projectIndex + 1]);
 
 await page.keyboard.press("ArrowUp");
 await page.waitForTimeout(300);
-const backIndex = await page.evaluate(() => {
-  const all = [...document.querySelectorAll("[data-decomp-task] input")];
-  return all.indexOf(document.activeElement);
-});
-check("↑ 移动焦点", backIndex === 0, `focused=${backIndex}`);
+check("↑ 移动焦点", (await focusedRowId()) === rowIds[projectIndex]);
 
-// --- 折叠：Alt+← / Alt+→（←/→ 留给光标） ---
-await page.keyboard.press("Alt+ArrowLeft");
+// --- 折叠：←/→ ---
+await page.keyboard.press("ArrowLeft");
 await page.waitForTimeout(400);
-const collapsedRows = await page.locator("[data-decomp-task]").count();
-check("Alt+← 折叠根节点", collapsedRows === 1, `rows=${collapsedRows}`);
-await page.keyboard.press("Alt+ArrowRight");
+const collapsedTitles = await treeTitles();
+check(
+  "← 折叠项目",
+  !collapsedTitles.includes(childAName) && !collapsedTitles.includes(childBName),
+  JSON.stringify(collapsedTitles.slice(-3)),
+);
+await page.keyboard.press("ArrowRight");
 await page.waitForTimeout(400);
-const expandedRows = await page.locator("[data-decomp-task]").count();
-check("Alt+→ 展开根节点", expandedRows === 3, `rows=${expandedRows}`);
+check("→ 展开项目", (await treeTitles()).includes(childAName));
 
-// --- ←/→ 只移动光标，不再折叠 ---
-const caretInput = page.locator("[data-decomp-task] input").nth(1);
-await caretInput.click();
+// --- 改名状态下 ←/→ 只移动光标 ---
+await page.getByText(childAName, { exact: true }).last().click();
+await page.keyboard.press("F2");
+await page.waitForTimeout(400);
+const caretInput = page.locator("aside [data-tree-row] input").first();
 const valueLen = (await caretInput.inputValue()).length;
 await page.keyboard.press("End");
 await page.keyboard.press("ArrowLeft");
 const caret = await caretInput.evaluate((el) => el.selectionStart);
-check("← 只移动光标", caret === valueLen - 1, `caret=${caret} len=${valueLen}`);
+check("改名时 ← 只移动光标", caret === valueLen - 1, `caret=${caret} len=${valueLen}`);
+await page.keyboard.press("Escape");
+await page.waitForTimeout(300);
 
 // --- 回车插入到当前节点之后（不是末尾） ---
-const decompTitles = () =>
-  page.$$eval("[data-decomp-task] input", (els) => els.map((el) => el.value));
-await page.locator("[data-decomp-task] input").nth(1).click();
+await page.getByText(childAName, { exact: true }).last().click();
 await page.keyboard.press("Enter");
-await page.waitForTimeout(900);
-await page.keyboard.type(childCName);
-await page.locator("[data-decomp-task] input").nth(0).click();
 await page.waitForTimeout(700);
-const afterEnter = await decompTitles();
+await page.keyboard.type(childCName);
+await page.keyboard.press("Enter");
+await page.waitForTimeout(800);
+const afterEnter = (await treeTitles()).filter((title) =>
+  [project, childAName, childBName, childCName].includes(title),
+);
 check(
   "回车插入到当前节点之后",
-  afterEnter[0] === project &&
-    afterEnter[1] === childAName &&
-    afterEnter[2] === childCName &&
-    afterEnter[3] === childBName,
+  afterEnter.join("|") === [project, childAName, childCName, childBName].join("|"),
   JSON.stringify(afterEnter),
 );
 
-// --- 拖动重排：把最后一个拖到第一个子节点之前 ---
-const rowEls = page.locator("[data-decomp-task]");
-const lastBox = await rowEls.nth(3).boundingBox();
-const firstChildBox = await rowEls.nth(1).boundingBox();
-if (lastBox && firstChildBox) {
-  await page.mouse.move(lastBox.x + 12, lastBox.y + lastBox.height / 2);
+// --- 拖动把手重排：把最后一个拖到第一个子节点之前 ---
+await page.getByText(childBName, { exact: true }).last().scrollIntoViewIfNeeded();
+await page.getByText(childAName, { exact: true }).last().scrollIntoViewIfNeeded();
+const gripOf = (name) =>
+  page
+    .locator("aside [data-tree-row]")
+    .filter({ hasText: name })
+    .last()
+    .locator("[data-tree-grip]");
+const lastGrip = await gripOf(childBName).boundingBox();
+const firstChildBox = await page
+  .locator("aside [data-tree-row]")
+  .filter({ hasText: childAName })
+  .last()
+  .boundingBox();
+if (lastGrip && firstChildBox) {
+  await page.mouse.move(lastGrip.x + lastGrip.width / 2, lastGrip.y + lastGrip.height / 2);
   await page.mouse.down();
-  await page.mouse.move(lastBox.x + 12, lastBox.y + 8, { steps: 5 });
-  await page.mouse.move(firstChildBox.x + 100, firstChildBox.y + 2, { steps: 12 });
+  await page.mouse.move(lastGrip.x + 4, lastGrip.y + 12, { steps: 5 });
+  await page.mouse.move(firstChildBox.x + 120, firstChildBox.y + 3, { steps: 12 });
   await page.waitForTimeout(250);
   await page.mouse.up();
   await page.waitForTimeout(900);
 }
-const afterDrag = await decompTitles();
+const afterDrag = (await treeTitles()).filter((title) =>
+  [project, childAName, childBName, childCName].includes(title),
+);
 check(
-  "拆解界面可拖动排序",
-  afterDrag[1] === childBName && afterDrag[2] === childAName && afterDrag[3] === childCName,
+  "树内拖动把手可排序",
+  afterDrag.join("|") === [project, childBName, childAName, childCName].join("|"),
   JSON.stringify(afterDrag),
 );
 
-await page.getByRole("button", { name: "完成", exact: true }).click();
-await page.waitForTimeout(500);
+// --- Tab 缩进 / Space 完成 ---
+await page.getByText(childCName, { exact: true }).last().click();
+await page.keyboard.press("Tab");
+await page.waitForTimeout(900);
+const indent = await page.evaluate(() => {
+  const row = document.activeElement;
+  return row ? Number.parseFloat(row.style.paddingLeft || "0") : -1;
+});
+check("Tab 缩进", indent > 20, `paddingLeft=${indent}`);
 
+await page.keyboard.press("Space");
+await page.waitForTimeout(900);
+const done = await page.evaluate(() =>
+  Boolean(document.activeElement?.querySelector("span.line-through")),
+);
+check("Space 完成", done, `done=${done}`);
+await page.keyboard.press("Space");
+await page.waitForTimeout(700);
 // --- 指针拖拽：树 → 图 ---
 const svg = page.locator('svg[aria-label="重要性紧迫性四象限任务图"]');
 const childRow = page.getByText(childAName, { exact: true }).last();

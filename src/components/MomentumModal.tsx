@@ -70,6 +70,35 @@ export function MomentumModal({ task, placement, onClose }: MomentumModalProps) 
             onChange={(event) => setDueAt(event.target.value)}
             className="h-9 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-2)] px-3 text-sm text-slate-200 outline-none focus:border-emerald-400/40"
           />
+          <div className="mt-1.5 flex flex-wrap items-center gap-1">
+            {[
+              { label: "今天", days: 0 },
+              { label: "+1 天", days: 1 },
+              { label: "+3 天", days: 3 },
+              { label: "+7 天", days: 7 },
+            ].map((preset) => (
+              <button
+                key={preset.label}
+                type="button"
+                onClick={() => {
+                  const date = new Date();
+                  date.setDate(date.getDate() + preset.days);
+                  const key = `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, "0")}-${`${date.getDate()}`.padStart(2, "0")}`;
+                  setDueAt(key);
+                }}
+                className="h-6 rounded-md border border-[var(--line)] px-2 text-[10px] text-slate-300 hover:border-emerald-400/40 hover:text-emerald-200"
+              >
+                {preset.label}
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={() => setDueAt("")}
+              className="h-6 rounded-md px-2 text-[10px] text-slate-500 hover:text-slate-300"
+            >
+              清除
+            </button>
+          </div>
           <span className="mt-1 block text-[10px] text-slate-600">
             只影响动量和逾期筛选；不影响是否上图。留空表示无截止日。
           </span>

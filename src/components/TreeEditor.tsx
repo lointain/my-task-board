@@ -458,7 +458,10 @@ export function TreeEditor({
         ].join(" ")}
         style={{ paddingLeft: depth * 14 + 4 }}
         onClick={() => onSelect(task.id)}
-        onDoubleClick={() => {
+        onDoubleClick={(event) => {
+          const target = event.target as HTMLElement;
+          // 输入框内双击交给浏览器（选中文字），不要穿透成“打开详情”
+          if (target.closest("input")) return;
           if (onOpenDetail) onOpenDetail(task.id);
         }}
         onContextMenu={(event) => {
@@ -558,6 +561,11 @@ export function TreeEditor({
             });
           }}
           onKeyDown={(event) => void onKeyDown(event, task)}
+          onDoubleClick={(event) => {
+            event.stopPropagation();
+            const input = event.currentTarget;
+            window.requestAnimationFrame(() => input.select());
+          }}
           onFocus={() => onSelect(task.id)}
           onPointerDown={(event) => event.stopPropagation()}
           spellCheck={false}

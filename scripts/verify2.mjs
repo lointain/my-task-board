@@ -1,4 +1,4 @@
-import { chromium } from "playwright-core";
+﻿import { chromium } from "playwright-core";
 
 const PORT = process.env.CDP_PORT ?? "9222";
 const browser = await chromium.connectOverCDP(`http://127.0.0.1:${PORT}`);
@@ -234,11 +234,12 @@ if (pgBox && chartBox) {
 check("父节点有进度环", (await page.locator(".ring-arc").count()) > 0);
 
 // 给项目设 emoji，图上应显示
-await page.locator(`[data-tree-row="${projectId2}"] input`).dblclick();
+await page.locator(`[data-tree-row="${projectId2}"] [data-tree-grip]`).dblclick({ force: true });
 await page.waitForTimeout(700);
 await page.getByRole("button", { name: "设置图标" }).click();
-await page.waitForTimeout(300);
-await page.getByRole("button", { name: "🚀", exact: true }).first().click();
+await page.waitForTimeout(400);
+check("图标弹窗打开", (await page.locator("body").innerText()).includes("选择图标"));
+await page.locator('button[title="🚀"]').first().click();
 await page.waitForTimeout(800);
 const emojiShown = await page.evaluate(() =>
   [...document.querySelectorAll(".point-emoji")].some((el) => el.textContent === "🚀"),
@@ -331,7 +332,7 @@ const pastTab = page.locator('[data-drop-board="mon"]');
 check("周一（已过去）不是投放目标", (await pastTab.count()) === 0);
 
 // --- TipTap 编辑器：待办列表 + 文本可选中 ---
-await page.locator(`[data-tree-row="${childAId}"] input`).dblclick();
+await page.locator(`[data-tree-row="${childAId}"] [data-tree-grip]`).dblclick({ force: true });
 await page.waitForTimeout(800);
 check("详情已打开", (await page.locator("body").innerText()).includes("任务详情"));
 const editor = page.locator(".tiptap").first();
@@ -366,4 +367,5 @@ check("无运行时报错", errors.length === 0, errors.join(" | "));
 console.log(`\n${checks.filter((c) => c.ok).length}/${checks.length} 通过`);
 await browser.close();
 process.exitCode = checks.every((c) => c.ok) ? 0 : 1;
+
 

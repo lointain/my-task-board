@@ -82,6 +82,10 @@ export function QuadrantChart({
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
+  const selectedIdRef = useRef<string | null>(selectedId);
+  useEffect(() => {
+    selectedIdRef.current = selectedId;
+  }, [selectedId]);
   const lastClickRef = useRef<{ id: string; at: number }>({ id: "", at: 0 });
   const [hover, setHover] = useState<{ taskId: string; x: number; y: number } | null>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
@@ -317,12 +321,17 @@ export function QuadrantChart({
       .attr("stroke-opacity", 0.85)
       .attr("stroke-dasharray", "2 3");
 
+    // 有 emoji 就不画色点，只留透明命中区 + 图标
     points
       .append("circle")
       .attr("class", "point-dot")
-      .attr("r", 6)
-      .attr("fill", (d) => colorForTask(d.task, taskMap, d.tagIds, tags, settings))
-      .attr("stroke", (d) => (isOverdue(d.task, dateKey(new Date())) ? "#f87171" : "#0b0f14"))
+      .attr("r", (d) => (d.emoji ? 8 : 6))
+      .attr("fill", (d) =>
+        d.emoji ? "transparent" : colorForTask(d.task, taskMap, d.tagIds, tags, settings),
+      )
+      .attr("stroke", (d) =>
+        d.emoji ? "none" : isOverdue(d.task, dateKey(new Date())) ? "#f87171" : "#0b0f14",
+      )
       .attr("stroke-width", 1.5);
 
     // emoji：自己有就用，没有则取最近祖先
@@ -332,9 +341,8 @@ export function QuadrantChart({
       .attr("class", "point-emoji")
       .attr("text-anchor", "middle")
       .attr("dominant-baseline", "central")
-      .attr("font-size", 9)
+      .attr("font-size", 12)
       .attr("pointer-events", "none")
-      .attr("opacity", (d) => (d.emojiInherited ? 0.7 : 1))
       .text((d) => d.emoji ?? "");
 
     // 进度环：仅父节点
@@ -533,6 +541,7 @@ export function QuadrantChart({
     // d3-drag 会在 mouseup 上 preventDefault，浏览器因此不再合成 click/dblclick，
     // 所以“单击/双击”改由 drag 手势自己判定。
     let moved = false;
+    let blocked = false;
 
     const handleTap = (d: Entry) => {
       const now = Date.now();
@@ -546,25 +555,19 @@ export function QuadrantChart({
       onSelect(d.task.id);
     };
 
-    // pointerdown 不经过 d3-drag，用它做稳定的双击判定
-    points.on("pointerdown", (event: PointerEvent, d) => {
-      if (event.button !== 0) return;
-      const now = Date.now();
-      const last = lastClickRef.current;
-      if (last.id === d.task.id && now - last.at < 450) {
-        lastClickRef.current = { id: "", at: 0 };
-        onOpenDetail(d.task.id);
-      }
-    });
-
+    // 双击由 handleTap 里的时间窗判定（两次轻点），
+    // 不要用 pointerdown 直接开详情：否则“点一下选中、马上拖”会被误判成双击
     const dragBehavior = drag<SVGGElement, Entry>()
-      .on("start", function () {
+      .on("start", function (_event, d) {
         draggingRef.current = true;
         moved = false;
+        // 未选中的点不能直接拖动位置：先点一下选中，再拖
+        blocked = d.task.id !== selectedIdRef.current;
         setHover(null);
         select(this).raise();
       })
       .on("drag", function (event) {
+        if (blocked) return;
         moved = true;
         const nx = Math.max(0, Math.min(INNER_W, event.x));
         const ny = Math.max(0, Math.min(INNER_H, event.y));
@@ -572,7 +575,7 @@ export function QuadrantChart({
       })
       .on("end", (event, d) => {
         draggingRef.current = false;
-        if (!moved) {
+        if (blocked || !moved) {
           handleTap(d);
           return;
         }

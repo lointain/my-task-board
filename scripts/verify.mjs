@@ -1,4 +1,4 @@
-﻿/**
+/**
  * 手动 E2E 冒烟脚本：需要先运行 `pnpm tauri dev`，
  * 并以 `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9222` 启动。
  *
@@ -84,9 +84,17 @@ const before = await point.getAttribute("transform");
 const circle = point.locator("circle.point-dot");
 const box = await circle.boundingBox();
 if (box) {
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  // 先点一下选中（未选中的点拖不动），再拖
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await page.waitForTimeout(300);
+  const selectedBox = await circle.boundingBox();
+  await page.mouse.move(selectedBox.x + selectedBox.width / 2, selectedBox.y + selectedBox.height / 2);
   await page.mouse.down();
-  await page.mouse.move(box.x + box.width / 2 + 55, box.y + box.height / 2 - 35, { steps: 8 });
+  await page.mouse.move(
+    selectedBox.x + selectedBox.width / 2 + 55,
+    selectedBox.y + selectedBox.height / 2 - 35,
+    { steps: 8 },
+  );
   await page.mouse.up();
   await page.waitForTimeout(900);
 }

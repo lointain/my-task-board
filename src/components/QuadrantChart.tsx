@@ -8,7 +8,7 @@ import { BOARD_LABEL, colorForTask, dateKey, isOverdue, shortTitle } from "../li
 import { CHART, CHART_INNER_H, CHART_INNER_W, pixelToUrgency } from "../lib/chartGeometry";
 import { useDragStore } from "../lib/drag";
 import { matchesFilter } from "../lib/filter";
-import { ChartTooltip } from "./ChartTooltip";
+import { ChartTooltip, type ChildViewMode } from "./ChartTooltip";
 
 const WIDTH = CHART.WIDTH;
 const HEIGHT = CHART.HEIGHT;
@@ -61,6 +61,10 @@ interface QuadrantChartProps {
   onOpenDetail: (id: string) => void;
   onMove: (taskId: string, x: number, y: number) => void;
   onMomentum: (taskId: string, vx: number, vy: number) => void;
+  onDeselect: () => void;
+  onToggleDone: (taskId: string, done: boolean) => void;
+  onToggleDoing: (taskId: string) => void;
+  childMode: ChildViewMode;
   onContextMenu: (taskId: string, x: number, y: number) => void;
 }
 
@@ -77,6 +81,10 @@ export function QuadrantChart({
   onOpenDetail,
   onMove,
   onMomentum,
+  onDeselect,
+  onToggleDone,
+  onToggleDoing,
+  childMode,
   onContextMenu,
 }: QuadrantChartProps) {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -172,8 +180,16 @@ export function QuadrantChart({
     const y = scaleLinear().domain([0, 100]).range([INNER_H, 0]);
     const root = svg.append("g").attr("transform", `translate(${MARGIN.left},${MARGIN.top})`);
 
+    // 点空白处取消选中（点在点上由拖拽逻辑处理）
+    svg.on("click", (event: MouseEvent) => {
+      const target = event.target as Element | null;
+      if (target?.closest("g.chart-point")) return;
+      onDeselect();
+    });
+
     root
       .append("rect")
+      .attr("class", "chart-bg")
       .attr("width", INNER_W)
       .attr("height", INNER_H)
       .attr("rx", 12)
@@ -295,6 +311,7 @@ export function QuadrantChart({
       .data(entries, (d) => d.task.id)
       .join("g")
       .attr("class", "chart-point")
+      .attr("data-task-id", (d) => d.task.id)
       .attr("transform", (d) => `translate(${x(d.placement.x)},${y(d.placement.y)})`)
       .attr("cursor", "pointer");
 
@@ -591,6 +608,7 @@ export function QuadrantChart({
     childMap,
     hiddenCount,
     onContextMenu,
+    onDeselect,
     onMove,
     onOpenDetail,
     onSelect,
@@ -702,6 +720,44 @@ export function QuadrantChart({
   const overChart = useDragStore((state) => state.over?.kind === "chart");
 
   const hovered = hover ? entries.find((entry) => entry.task.id === hover.taskId) : null;
+
+  const selectedEntry = selectedId
+    ? (entries.find((entry) => entry.task.id === selectedId) ?? null)
+    : null;
+  const [panelPos, setPanelPos] = useState<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    if (!selectedId) {
+      setPanelPos(null);
+      return;
+    }
+    const container = containerRef.current;
+    if (!container) return;
+    const point = container.querySelector(`g.chart-point[data-task-id="${selectedId}"]`);
+    if (!point) {
+      setPanelPos(null);
+      return;
+    }
+    const rect = point.getBoundingClientRect();
+    const base = container.getBoundingClientRect();
+    setPanelPos({
+      x: rect.left - base.left + rect.width / 2,
+      y: rect.top - base.top + rect.height / 2,
+    });
+  }, [selectedId, entries, size]);
+
+  const pathOf = (task: Task) => {
+    const chain: string[] = [];
+    let current: Task | undefined = task;
+    const guard = new Set<string>();
+    while (current && !guard.has(current.id)) {
+      guard.add(current.id);
+      chain.unshift(current.title);
+      current = current.parentId ? taskMap.get(current.parentId) : undefined;
+    }
+    return chain;
+  };
+
   const hoveredPath = (() => {
     if (!hovered) return [] as string[];
     const chain: string[] = [];
@@ -738,7 +794,23 @@ export function QuadrantChart({
         role="img"
         aria-label="重要性紧迫性四象限任务图"
       />
-      {hovered && hover && !dragging ? (
+      {selectedEntry && panelPos ? (
+        <ChartTooltip
+          task={selectedEntry.task}
+          placement={selectedEntry.placement}
+          tags={selectedEntry.tagIds
+            .map((id) => tags.find((tag) => tag.id === id))
+            .filter((tag): tag is Tag => Boolean(tag))}
+          path={pathOf(selectedEntry.task)}
+          container={size}
+          pointer={panelPos}
+          interactive
+          tasks={tasks}
+          childMode={childMode}
+          onToggleDone={onToggleDone}
+          onToggleDoing={onToggleDoing}
+        />
+      ) : hovered && hover && !dragging ? (
         <ChartTooltip
           task={hovered.task}
           placement={hovered.placement}

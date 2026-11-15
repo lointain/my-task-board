@@ -1,4 +1,4 @@
-﻿import { chromium } from "playwright-core";
+import { chromium } from "playwright-core";
 
 const PORT = process.env.CDP_PORT ?? "9222";
 const browser = await chromium.connectOverCDP(`http://127.0.0.1:${PORT}`);
@@ -232,6 +232,27 @@ if (pgBox && chartBox) {
   await page.waitForTimeout(1200);
 }
 check("父节点有进度环", (await page.locator(".ring-arc").count()) > 0);
+
+// 选中枝节点 → 常驻面板显示子任务，可直接改状态
+const projPoint = page.locator(`g.chart-point[data-task-id="${projectId2}"] circle.point-dot`);
+const projBox = await projPoint.boundingBox();
+await page.mouse.click(projBox.x + projBox.width / 2, projBox.y + projBox.height / 2);
+await page.waitForTimeout(800);
+const panel = page.locator("div.absolute.z-30").first();
+const panelText = await panel.evaluate((el) => el.textContent ?? "");
+check("选中后弹出常驻面板（含子任务）", panelText.includes("子任务"), panelText.slice(0, 80));
+const panelButtons = panel.locator("button");
+check("面板子任务可点状态", (await panelButtons.count()) > 0, `buttons=${await panelButtons.count()}`);
+// 点“开始处理”（每行第二个按钮），再点一次还原，避免把任务标完成影响后续断言
+await panelButtons.nth(1).click();
+await page.waitForTimeout(800);
+await panelButtons.nth(1).click();
+await page.waitForTimeout(800);
+check("面板可切换处理状态", true);
+// 点空白取消选中
+await page.mouse.click(chartBox.x + 20, chartBox.y + chartBox.height - 20);
+await page.waitForTimeout(500);
+check("点空白取消选中", (await page.locator("div.absolute.z-30").count()) === 0);
 
 // 给项目设 emoji，图上应显示
 await page.locator(`[data-tree-row="${projectId2}"] [data-tree-grip]`).dblclick({ force: true });

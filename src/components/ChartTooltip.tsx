@@ -1,13 +1,17 @@
 import {
   AlertTriangle,
   CalendarClock,
-  GripVertical,
+  CheckSquare2,
   MoveRight,
+  Play,
+  Square,
   Tag as TagIcon,
 } from "lucide-react";
 import type { Placement, Tag, Task } from "../data/types";
 import { BOARD_LABEL, dateKey } from "../lib/board";
 import { QUADRANTS, quadrantOf } from "../lib/quadrant";
+
+export type ChildViewMode = "direct" | "breadcrumb" | "tree";
 
 interface ChartTooltipProps {
   task: Task;
@@ -16,6 +20,12 @@ interface ChartTooltipProps {
   path: string[];
   container: { width: number; height: number };
   pointer: { x: number; y: number };
+  /** 选中态：常驻、可交互，并展示子节点状态操作 */
+  interactive?: boolean;
+  tasks?: Task[];
+  childMode?: ChildViewMode;
+  onToggleDone?: (id: string, done: boolean) => void;
+  onToggleDoing?: (id: string) => void;
 }
 
 function daysBetween(from: string, to: string): number {
@@ -31,6 +41,25 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
   archived: { label: "已归档", color: "#64748b" },
 };
 
+function collectTree(rootId: string, tasks: Task[]) {
+  const byParent = new Map<string | null, Task[]>();
+  for (const task of tasks) {
+    if (task.status === "archived") continue;
+    const list = byParent.get(task.parentId) ?? [];
+    list.push(task);
+    byParent.set(task.parentId, list);
+  }
+  const rows: Array<{ task: Task; depth: number }> = [];
+  const walk = (id: string, depth: number) => {
+    for (const child of byParent.get(id) ?? []) {
+      rows.push({ task: child, depth });
+      walk(child.id, depth + 1);
+    }
+  };
+  walk(rootId, 0);
+  return rows;
+}
+
 export function ChartTooltip({
   task,
   placement,
@@ -38,6 +67,11 @@ export function ChartTooltip({
   path,
   container,
   pointer,
+  interactive = false,
+  tasks = [],
+  childMode = "direct",
+  onToggleDone,
+  onToggleDoing,
 }: ChartTooltipProps) {
   const quadrant = QUADRANTS[quadrantOf(placement.x, placement.y)];
   const status = STATUS_META[task.status] ?? STATUS_META.todo;
@@ -45,8 +79,15 @@ export function ChartTooltip({
   const overdue = Boolean(task.effectiveDue && task.effectiveDue < today);
   const dueIn = task.effectiveDue ? daysBetween(today, task.effectiveDue) : null;
 
-  const offsetX = pointer.x > container.width - 260 ? -256 : 18;
-  const offsetY = pointer.y > container.height - 220 ? -190 : 14;
+  const childRows = (() => {
+    if (!interactive) return [];
+    if (childMode === "tree") return collectTree(task.id, tasks).slice(0, 40);
+    const direct = tasks.filter((item) => item.parentId === task.id && item.status !== "archived");
+    return direct.map((item) => ({ task: item, depth: 0 }));
+  })();
+
+  const offsetX = pointer.x > container.width - 280 ? -272 : 18;
+  const offsetY = pointer.y > container.height - 260 ? -220 : 14;
 
   const dueText = (() => {
     if (!task.effectiveDue) return "无截止日";
@@ -65,12 +106,16 @@ export function ChartTooltip({
 
   return (
     <div
-      className="pointer-events-none absolute z-30 w-[248px] overflow-hidden rounded-xl border border-[var(--line)] bg-[#0d131a]/96 shadow-2xl backdrop-blur-sm"
+      className={[
+        "absolute z-30 w-[264px] overflow-hidden rounded-xl border border-[var(--line)] bg-[#0d131a]/96 shadow-2xl backdrop-blur-sm",
+        interactive ? "pointer-events-auto" : "pointer-events-none",
+      ].join(" ")}
       style={{ left: pointer.x + offsetX, top: pointer.y + offsetY }}
+      onClick={(event) => event.stopPropagation()}
     >
       <div className="border-b border-[var(--line-soft)] px-3 py-2">
         <div className="flex items-start gap-1.5">
-          <GripVertical size={12} className="mt-0.5 shrink-0 text-slate-600" />
+          <span className="mt-px shrink-0 text-[12px] leading-none">{task.emoji ?? ""}</span>
           <span className="min-w-0 flex-1 text-[12px] font-medium leading-snug text-slate-100">
             {task.title}
           </span>
@@ -153,10 +198,84 @@ export function ChartTooltip({
           </div>
         ) : null}
 
+        {interactive && childRows.length > 0 ? (
+          <div className="mt-1 border-t border-[var(--line-soft)] pt-1.5">
+            {childMode === "breadcrumb" ? (
+              <div className="mb-1 flex flex-wrap items-center gap-0.5 text-[9px] text-slate-500">
+                {path.map((part, index) => (
+                  <span
+                    key={path.slice(0, index + 1).join("/")}
+                    className="flex items-center gap-0.5"
+                  >
+                    {index > 0 ? <span className="text-slate-700">›</span> : null}
+                    <span className={index === path.length - 1 ? "text-slate-300" : ""}>
+                      {part}
+                    </span>
+                  </span>
+                ))}
+              </div>
+            ) : null}
+            <div className="mb-1 flex items-center justify-between text-[9px] text-slate-500">
+              <span>
+                子任务 {childRows.length}
+                {childMode === "tree" ? "（整棵）" : ""}
+              </span>
+              <span className="text-slate-600">
+                {childRows.filter((row) => row.task.status === "done").length} 完成
+              </span>
+            </div>
+            <div className="max-h-[168px] space-y-0.5 overflow-y-auto pr-1">
+              {childRows.map(({ task: child, depth }) => (
+                <div
+                  key={child.id}
+                  className="flex items-center gap-1 rounded px-1 py-0.5 hover:bg-white/[0.05]"
+                  style={{ paddingLeft: depth * 12 + 2 }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => onToggleDone?.(child.id, child.status !== "done")}
+                    className="flex h-4 w-4 shrink-0 items-center justify-center"
+                    title={child.status === "done" ? "取消完成" : "完成"}
+                  >
+                    {child.status === "done" ? (
+                      <CheckSquare2 size={12} className="text-emerald-400" />
+                    ) : (
+                      <Square size={12} className="text-slate-600" />
+                    )}
+                  </button>
+                  <span
+                    className={[
+                      "min-w-0 flex-1 truncate text-[10px]",
+                      child.status === "done" ? "text-slate-500 line-through" : "text-slate-300",
+                    ].join(" ")}
+                    title={child.title}
+                  >
+                    {child.emoji ? `${child.emoji} ` : ""}
+                    {child.title}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => onToggleDoing?.(child.id)}
+                    className={[
+                      "flex h-4 w-4 shrink-0 items-center justify-center rounded",
+                      child.status === "doing"
+                        ? "text-amber-300"
+                        : "text-slate-600 hover:text-slate-300",
+                    ].join(" ")}
+                    title={child.status === "doing" ? "暂停处理" : "开始处理"}
+                  >
+                    <Play size={10} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         <div className="flex items-center gap-2 pt-0.5 text-[9px] text-slate-600">
           <span>{task.noteJson ? "有说明" : "无说明"}</span>
           <span className="text-slate-700">|</span>
-          <span>双击打开详情</span>
+          <span>{interactive ? "右键可改状态" : "双击打开详情"}</span>
         </div>
       </div>
     </div>

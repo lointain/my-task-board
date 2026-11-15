@@ -44,6 +44,8 @@ export default function App() {
   const removePlacement = useAppStore((state) => state.removePlacement);
   const createTask = useAppStore((state) => state.createTask);
   const deleteTask = useAppStore((state) => state.deleteTask);
+  const updateTask = useAppStore((state) => state.updateTask);
+  const completeTask = useAppStore((state) => state.completeTask);
 
   const [detailId, setDetailId] = useState<string | null>(null);
   const [statsOpen, setStatsOpen] = useState(false);
@@ -134,6 +136,11 @@ export default function App() {
           focusInTree(menuTask.id);
         },
       },
+      {
+        label: menuTask.status === "doing" ? "暂停处理" : "开始处理",
+        onClick: () =>
+          void updateTask(menuTask.id, { status: menuTask.status === "doing" ? "todo" : "doing" }),
+      },
     ];
     if (menuPlacement) {
       items.push({
@@ -156,7 +163,7 @@ export default function App() {
       },
     });
     return items;
-  }, [createTask, deleteTask, focusInTree, menuPlacement, menuTask, removePlacement]);
+  }, [createTask, deleteTask, focusInTree, menuPlacement, menuTask, removePlacement, updateTask]);
 
   if (loading) {
     return (
@@ -250,6 +257,15 @@ export default function App() {
                 void setMomentum({ taskId, dueAt: null, mode: "manual", vx, vy })
               }
               onContextMenu={(taskId, x, y) => setMenu({ taskId, x, y, source: "chart" })}
+              onDeselect={() => select(null)}
+              onToggleDone={(taskId, done) => void completeTask(taskId, done)}
+              onToggleDoing={(taskId) => {
+                const current = taskMap.get(taskId);
+                void updateTask(taskId, { status: current?.status === "doing" ? "todo" : "doing" });
+              }}
+              childMode={
+                (data?.settings.child_view_mode as "direct" | "breadcrumb" | "tree") ?? "direct"
+              }
             />
           </section>
 

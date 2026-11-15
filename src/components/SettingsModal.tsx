@@ -28,6 +28,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
   const [colorBy, setColorBy] = useState("project");
   const [showMomentum, setShowMomentum] = useState(true);
   const [horizon, setHorizon] = useState("7");
+  const [childMode, setChildMode] = useState("direct");
   const [dataDir, setDataDir] = useState("");
   const [backupPath, setBackupPath] = useState("");
 
@@ -37,6 +38,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
     setColorBy(data?.settings.color_by ?? "project");
     setShowMomentum(data?.settings.show_momentum !== "false");
     setHorizon(data?.settings.momentum_horizon_days ?? "7");
+    setChildMode(data?.settings.child_view_mode ?? "direct");
     void repo
       .dataDir()
       .then(setDataDir)
@@ -230,6 +232,21 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                 }}
               />
               显示动量（线段、刻度、虚影、逾期尾巴）
+            </label>
+            <label className="mt-2 flex items-center gap-2 text-[11px] text-slate-300">
+              选中面板的子节点
+              <select
+                value={childMode}
+                onChange={(event) => {
+                  setChildMode(event.target.value);
+                  void setSetting("child_view_mode", event.target.value);
+                }}
+                className="h-7 rounded-md border border-[var(--line)] bg-[var(--panel)] px-2 text-[11px] text-slate-300"
+              >
+                <option value="direct">直接子节点</option>
+                <option value="breadcrumb">面包屑 + 列表</option>
+                <option value="tree">整棵子树</option>
+              </select>
             </label>
             <label className="mt-2 flex items-center gap-2 text-[11px] text-slate-300">
               预测天数

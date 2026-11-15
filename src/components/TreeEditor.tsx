@@ -518,8 +518,7 @@ export function TreeEditor({
           )}
         </button>
 
-        <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
-
+        {/* 有图标就不画色点 */}
         {(() => {
           const own = task.emoji;
           let emoji = own;
@@ -537,15 +536,22 @@ export function TreeEditor({
               parent = parent.parentId ? taskMap.get(parent.parentId) : undefined;
             }
           }
-          if (!emoji) return null;
+          if (emoji) {
+            return (
+              <span
+                className="w-4 shrink-0 text-center text-[11px] leading-none"
+                style={{ opacity: inherited ? 0.75 : 1 }}
+                title={inherited ? "继承自父级" : "自定义图标"}
+              >
+                {emoji}
+              </span>
+            );
+          }
           return (
             <span
-              className="w-4 shrink-0 text-center text-[11px] leading-none"
-              style={{ opacity: inherited ? 0.6 : 1 }}
-              title={inherited ? "继承自父级" : "自定义图标"}
-            >
-              {emoji}
-            </span>
+              className="h-1.5 w-1.5 shrink-0 rounded-full"
+              style={{ backgroundColor: color }}
+            />
           );
         })()}
 

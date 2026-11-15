@@ -712,7 +712,7 @@ fn task_create(state: State<'_, AppState>, input: TaskCreate) -> Result<Task, St
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
     let title = input.title.trim().to_string();
     if title.is_empty() {
-        return Err("标题不能为空".into());
+        return Err("ERR_EMPTY_TITLE".into());
     }
     if let Some(parent) = input.parent_id.as_deref() {
         let exists: i64 = conn
@@ -723,7 +723,7 @@ fn task_create(state: State<'_, AppState>, input: TaskCreate) -> Result<Task, St
             )
             .map_err(|e| e.to_string())?;
         if exists == 0 {
-            return Err("父任务不存在".into());
+            return Err("ERR_PARENT_NOT_FOUND".into());
         }
     }
     let sort_order: f64 = if let Some(after_id) = input.after_id.as_deref() {
@@ -733,7 +733,7 @@ fn task_create(state: State<'_, AppState>, input: TaskCreate) -> Result<Task, St
                 params![after_id],
                 |row| Ok((row.get(0)?, row.get(1)?)),
             )
-            .map_err(|_| "插入位置不存在".to_string())?;
+            .map_err(|_| "ERR_AFTER_NOT_FOUND".to_string())?;
         let next: Option<f64> = conn
             .query_row(
                 "SELECT MIN(sort_order) FROM tasks
@@ -779,7 +779,7 @@ fn task_create(state: State<'_, AppState>, input: TaskCreate) -> Result<Task, St
     load_tasks(&conn)?
         .into_iter()
         .find(|t| t.id == id)
-        .ok_or_else(|| "创建后未找到任务".into())
+        .ok_or_else(|| "ERR_TASK_NOT_FOUND_AFTER_CREATE".into())
 }
 
 #[tauri::command]
@@ -788,7 +788,7 @@ fn task_update(state: State<'_, AppState>, id: String, patch: TaskPatch) -> Resu
     let current = load_tasks(&conn)?
         .into_iter()
         .find(|t| t.id == id)
-        .ok_or_else(|| "任务不存在".to_string())?;
+        .ok_or_else(|| "ERR_TASK_NOT_FOUND".to_string())?;
 
     let title = patch
         .title
@@ -798,7 +798,7 @@ fn task_update(state: State<'_, AppState>, id: String, patch: TaskPatch) -> Resu
     let previous_status = current.status.clone();
     let status = patch.status.unwrap_or_else(|| current.status.clone());
     if !is_valid_status(&status) {
-        return Err("非法状态".into());
+        return Err("ERR_INVALID_STATUS".into());
     }
     let due_at = match patch.due_at {
         Some(v) if v.trim().is_empty() => None,
@@ -811,7 +811,7 @@ fn task_update(state: State<'_, AppState>, id: String, patch: TaskPatch) -> Resu
         None => current.parent_id,
     };
     if parent_id.as_deref() == Some(id.as_str()) {
-        return Err("不能把自己设为父任务".into());
+        return Err("ERR_SELF_PARENT".into());
     }
     let sort_order = patch.sort_order.unwrap_or(current.sort_order);
     let note_json = match patch.note_json {
@@ -873,7 +873,7 @@ fn task_update(state: State<'_, AppState>, id: String, patch: TaskPatch) -> Resu
     load_tasks(&conn)?
         .into_iter()
         .find(|t| t.id == id)
-        .ok_or_else(|| "更新后未找到任务".into())
+        .ok_or_else(|| "ERR_TASK_NOT_FOUND_AFTER_UPDATE".into())
 }
 
 #[tauri::command]
@@ -949,19 +949,19 @@ fn placement_upsert(
     let task = load_tasks(&conn)?
         .into_iter()
         .find(|t| t.id == input.task_id)
-        .ok_or_else(|| "任务不存在".to_string())?;
+        .ok_or_else(|| "ERR_TASK_NOT_FOUND".to_string())?;
 
     let (board, scheduled_date) = if input.board == "week" {
         ("week".to_string(), None)
     } else {
         if !is_valid_board(&input.board) {
-            return Err("非法的板".into());
+            return Err("ERR_INVALID_BOARD".into());
         }
         let date = input
             .scheduled_date
             .clone()
-            .ok_or_else(|| "日板必须有日期".to_string())?;
-        let parsed = parse_date(&date).ok_or_else(|| "日期格式应为 YYYY-MM-DD".to_string())?;
+            .ok_or_else(|| "ERR_DAY_BOARD_NEEDS_DATE".to_string())?;
+        let parsed = parse_date(&date).ok_or_else(|| "ERR_INVALID_DATE".to_string())?;
         (weekday_board(parsed).to_string(), Some(date))
     };
 
@@ -1029,7 +1029,7 @@ fn placement_upsert(
     load_placements(&conn)?
         .into_iter()
         .find(|p| p.task_id == input.task_id)
-        .ok_or_else(|| "保存后未找到 placement".into())
+        .ok_or_else(|| "ERR_PLACEMENT_NOT_FOUND_AFTER_SAVE".into())
 }
 
 #[tauri::command]
@@ -1050,7 +1050,7 @@ fn placement_set_momentum(
 ) -> Result<Placement, String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
     if !matches!(input.mode.as_str(), "auto" | "manual") {
-        return Err("非法动量模式".into());
+        return Err("ERR_INVALID_MOMENTUM_MODE".into());
     }
     if let Some(due) = input.due_at.as_ref() {
         let value = if due.trim().is_empty() { None } else { Some(due) };
@@ -1063,11 +1063,11 @@ fn placement_set_momentum(
     let task = load_tasks(&conn)?
         .into_iter()
         .find(|t| t.id == input.task_id)
-        .ok_or_else(|| "任务不存在".to_string())?;
+        .ok_or_else(|| "ERR_TASK_NOT_FOUND".to_string())?;
     let placement = load_placements(&conn)?
         .into_iter()
         .find(|p| p.task_id == input.task_id)
-        .ok_or_else(|| "该任务还没有上图".to_string())?;
+        .ok_or_else(|| "ERR_NOT_PLACED".to_string())?;
 
     let (vx, vy) = if input.mode == "auto" {
         (
@@ -1091,7 +1091,7 @@ fn placement_set_momentum(
     load_placements(&conn)?
         .into_iter()
         .find(|p| p.task_id == input.task_id)
-        .ok_or_else(|| "更新后未找到 placement".into())
+        .ok_or_else(|| "ERR_PLACEMENT_NOT_FOUND_AFTER_UPDATE".into())
 }
 
 #[tauri::command]
@@ -1143,7 +1143,7 @@ fn tag_group_save(
 ) -> Result<Vec<TagGroup>, String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
     if !matches!(mode.as_str(), "single" | "multi") {
-        return Err("标签组模式必须是 single 或 multi".into());
+        return Err("ERR_INVALID_TAG_GROUP_MODE".into());
     }
     let now_id = id.unwrap_or_else(|| Uuid::new_v4().to_string());
     let sort_order: f64 = conn
@@ -1455,4 +1455,5 @@ mod tests {
         assert!((vx - 6.0).abs() < 0.001);
     }
 }
+
 

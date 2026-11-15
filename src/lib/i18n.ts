@@ -5,11 +5,16 @@
  * - 当前语言放在模块变量里，`setLocale` 由 App 在渲染前调用
  */
 
-export type Locale = "zh-CN" | "en-US";
+import { JA } from "./locales/ja";
+import { toTraditional } from "./locales/zh-tw";
+
+export type Locale = "zh-CN" | "zh-TW" | "en-US" | "ja-JP";
 
 export const LOCALES: Array<{ id: Locale; label: string }> = [
   { id: "zh-CN", label: "简体中文" },
+  { id: "zh-TW", label: "繁體中文" },
   { id: "en-US", label: "English" },
+  { id: "ja-JP", label: "日本語" },
 ];
 
 const EN: Record<string, string> = {
@@ -301,6 +306,34 @@ const EN: Record<string, string> = {
   周五: "Fri",
   周六: "Sat",
   周日: "Sun",
+  "Q1 · 重要且紧急": "Q1 · Important & urgent",
+  "Q2 · 重要不紧急": "Q2 · Important, not urgent",
+  "Q3 · 紧急不重要": "Q3 · Urgent, not important",
+  "Q4 · 不重要不紧急": "Q4 · Neither",
+  "← 越靠左越紧迫": "← more urgent to the left",
+  "重要性 ↑": "Importance ↑",
+  这张图还没有任务: "No tasks on this chart yet",
+  从右侧任务树拖一个节点进来: "Drag a node from the tree on the right",
+  重要性紧迫性四象限任务图: "Eisenhower matrix: urgency × importance",
+  " · 截止 {date}": " · due {date}",
+  "紧迫 {x} / 重要 {y}": "urgency {x} / importance {y}",
+  "逾期 {n}d": "overdue {n}d",
+  ERR_EMPTY_TITLE: "Title cannot be empty",
+  ERR_PARENT_NOT_FOUND: "Parent task not found",
+  ERR_AFTER_NOT_FOUND: "Insert position not found",
+  ERR_TASK_NOT_FOUND_AFTER_CREATE: "Task not found after creation",
+  ERR_TASK_NOT_FOUND_AFTER_UPDATE: "Task not found after update",
+  ERR_TASK_NOT_FOUND: "Task not found",
+  ERR_INVALID_STATUS: "Invalid status",
+  ERR_SELF_PARENT: "A task cannot be its own parent",
+  ERR_INVALID_BOARD: "Invalid board",
+  ERR_DAY_BOARD_NEEDS_DATE: "Day boards require a date",
+  ERR_INVALID_DATE: "Date must be YYYY-MM-DD",
+  ERR_PLACEMENT_NOT_FOUND_AFTER_SAVE: "Placement not found after save",
+  ERR_PLACEMENT_NOT_FOUND_AFTER_UPDATE: "Placement not found after update",
+  ERR_INVALID_MOMENTUM_MODE: "Invalid momentum mode",
+  ERR_NOT_PLACED: "This task is not on the chart",
+  ERR_INVALID_TAG_GROUP_MODE: "Tag group mode must be single or multi",
 };
 
 const ZH_OVERRIDE: Record<string, string> = {};
@@ -308,7 +341,7 @@ const ZH_OVERRIDE: Record<string, string> = {};
 let current: Locale = "zh-CN";
 
 export function setLocale(locale: Locale) {
-  current = locale === "en-US" ? "en-US" : "zh-CN";
+  current = locale;
 }
 
 export function getLocale(): Locale {
@@ -328,10 +361,21 @@ export function t(message: string, params?: Record<string, string | number>): st
     const zh = ZH_OVERRIDE[message];
     return interpolate(zh ?? message, params);
   }
+  if (current === "zh-TW") return interpolate(toTraditional(message), params);
+  if (current === "ja-JP") return interpolate(JA[message] ?? EN[message] ?? message, params);
   return interpolate(EN[message] ?? message, params);
+}
+
+/** 后端错误码 → 当前语言文案；未收录的原样返回 */
+export function translateError(message: string): string {
+  return t(message);
+}
+
+function normalizeLocale(value: string | undefined): Locale {
+  return LOCALES.some((item) => item.id === value) ? (value as Locale) : "zh-CN";
 }
 
 /** 语言切换后 React 需要重渲染：把 locale 放进 store 的 settings 里即可 */
 export function localeFromSettings(settings: Record<string, string> | undefined): Locale {
-  return settings?.locale === "en-US" ? "en-US" : "zh-CN";
+  return normalizeLocale(settings?.locale);
 }

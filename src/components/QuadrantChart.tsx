@@ -8,7 +8,7 @@ import { BOARD_LABEL, colorForTask, dateKey, isOverdue, shortTitle } from "../li
 import { CHART, CHART_INNER_H, CHART_INNER_W, pixelToUrgency } from "../lib/chartGeometry";
 import { useDragStore } from "../lib/drag";
 import { matchesFilter } from "../lib/filter";
-import { t } from "../lib/i18n";
+import { setLocale, t } from "../lib/i18n";
 import { ChartTooltip, type ChildViewMode } from "./ChartTooltip";
 
 function cssColor(name: string, fallback: string) {
@@ -185,6 +185,7 @@ export function QuadrantChart({
 
     // 子组件的 effect 先于父组件执行，所以这里自己先把主题写上去再读变量
     document.documentElement.dataset.theme = theme;
+    setLocale((settings.locale as "zh-CN" | "en-US") ?? "zh-CN");
 
     // 主题色：从 CSS 变量读，切换主题时随 settings 变化重绘
     const css = getComputedStyle(document.documentElement);
@@ -304,7 +305,7 @@ export function QuadrantChart({
       .attr("text-anchor", "end")
       .attr("fill", "#8b98a9")
       .attr("font-size", 11)
-      .text("← 越靠左越紧迫");
+      .text(t("← 越靠左越紧迫"));
 
     root
       .append("text")
@@ -314,7 +315,7 @@ export function QuadrantChart({
       .attr("text-anchor", "end")
       .attr("fill", "#8b98a9")
       .attr("font-size", 11)
-      .text("重要性 ↑");
+      .text(t("重要性 ↑"));
 
     if (entries.length === 0) {
       root
@@ -324,7 +325,7 @@ export function QuadrantChart({
         .attr("text-anchor", "middle")
         .attr("fill", "#475569")
         .attr("font-size", 13)
-        .text("这张图还没有任务");
+        .text(t("这张图还没有任务"));
       root
         .append("text")
         .attr("x", INNER_W / 2)
@@ -332,7 +333,7 @@ export function QuadrantChart({
         .attr("text-anchor", "middle")
         .attr("fill", "#334155")
         .attr("font-size", 11)
-        .text("从右侧任务树拖一个节点进来");
+        .text(t("从右侧任务树拖一个节点进来"));
     }
 
     const points = root
@@ -352,11 +353,12 @@ export function QuadrantChart({
       .attr("fill", (d) => colorForTask(d.task, taskMap, d.tagIds, tags, settings));
 
     points.attr("aria-label", (d) => {
-      const due = d.task.effectiveDue ? ` · 截止 ${d.task.effectiveDue}` : "";
-      const day = d.placement.board === "week" ? "周级" : BOARD_LABEL[d.placement.board];
-      return `${d.task.title} · ${day} · 紧迫 ${Math.round(d.placement.x)} / 重要 ${Math.round(
-        d.placement.y,
-      )}${due}`;
+      const due = d.task.effectiveDue ? t(" · 截止 {date}", { date: d.task.effectiveDue }) : "";
+      const day = d.placement.board === "week" ? t("周级") : BOARD_LABEL[d.placement.board];
+      return `${d.task.title} · ${day} · ${t("紧迫 {x} / 重要 {y}", {
+        x: Math.round(d.placement.x),
+        y: Math.round(d.placement.y),
+      })}${due}`;
     });
 
     points
@@ -529,7 +531,7 @@ export function QuadrantChart({
         .attr("fill", "#f87171")
         .attr("font-size", 9)
         .attr("pointer-events", "none")
-        .text((t) => `逾期 ${t.days}d`);
+        .text((tail) => t("逾期 {n}d", { n: tail.days }));
     }
 
     points
@@ -834,7 +836,7 @@ export function QuadrantChart({
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         className="h-full w-full"
         role="img"
-        aria-label="重要性紧迫性四象限任务图"
+        aria-label={t("重要性紧迫性四象限任务图")}
       />
       {selectedEntry && panelPos ? (
         <ChartTooltip
@@ -865,18 +867,20 @@ export function QuadrantChart({
       {dragging ? (
         <div className="pointer-events-none absolute inset-0 flex items-start justify-center pt-3">
           <span className="rounded-full border border-accent-400/30 bg-[var(--bg)]/85 px-2.5 py-0.5 text-[10px] text-accent-200">
-            {overChart ? "松开：按落点放上去" : `拖到${BOARD_LABEL[board]}图上松开`}
+            {overChart
+              ? t("松开：按落点放上去")
+              : t("拖到{board}图上松开", { board: BOARD_LABEL[board] })}
           </span>
         </div>
       ) : null}
       <div className="pointer-events-none absolute right-3 top-2 flex items-center gap-2 text-[10px] text-[var(--t3)]">
         {hiddenCount > 0 ? (
           <span className="rounded-full border border-[var(--line)] bg-[var(--bg)]/80 px-2 py-0.5">
-            已隐藏 {hiddenCount}
+            {t("已隐藏 {n}", { n: hiddenCount })}
           </span>
         ) : null}
         <span className="rounded-full border border-[var(--line)] bg-[var(--bg)]/80 px-2 py-0.5">
-          {entries.length} 个承诺
+          {t("{n} 个承诺", { n: entries.length })}
         </span>
       </div>
     </div>

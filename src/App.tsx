@@ -1,4 +1,4 @@
-import {
+﻿import {
   BarChart3,
   CalendarDays,
   ListTree,
@@ -24,7 +24,7 @@ import { BOARD_LABEL } from "./lib/board";
 import { clientToChartPoint } from "./lib/chartGeometry";
 import { registerDropHandler } from "./lib/drag";
 import { matchesFilter } from "./lib/filter";
-import { localeFromSettings, setLocale, t } from "./lib/i18n";
+import { localeFromSettings, setLocale, t, translateError } from "./lib/i18n";
 import { useAppStore } from "./store/useAppStore";
 
 interface MenuState {
@@ -367,7 +367,7 @@ export default function App() {
 
       {error ? (
         <div className="fixed bottom-12 left-1/2 z-[70] flex max-w-[80vw] -translate-x-1/2 items-center gap-3 rounded-lg border border-red-400/30 bg-red-950/90 px-4 py-2.5 text-[11px] text-red-100 shadow-xl">
-          <span className="min-w-0 flex-1">{error}</span>
+          <span className="min-w-0 flex-1">{translateError(error)}</span>
           <button
             type="button"
             onClick={clearError}

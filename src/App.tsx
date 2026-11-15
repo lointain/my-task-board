@@ -1,4 +1,13 @@
-import { BarChart3, CalendarDays, ListTree, Plus, Settings2, Sparkles } from "lucide-react";
+import {
+  BarChart3,
+  CalendarDays,
+  ListTree,
+  Moon,
+  Plus,
+  Settings2,
+  Sparkles,
+  Sun,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ContextMenu, type MenuItem } from "./components/ContextMenu";
 import { DragGhost } from "./components/DragGhost";
@@ -26,6 +35,13 @@ interface MenuState {
 
 export default function App() {
   const data = useAppStore((state) => state.data);
+  const settings = data?.settings ?? {};
+  const theme = settings.theme === "light" ? "light" : "dark";
+  const setSetting = useAppStore((state) => state.setSetting);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
   const loading = useAppStore((state) => state.loading);
   const error = useAppStore((state) => state.error);
   const clearError = useAppStore((state) => state.clearError);
@@ -167,7 +183,7 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[var(--bg)] text-sm text-slate-500">
+      <div className="flex h-screen items-center justify-center bg-[var(--bg)] text-sm text-[var(--t3)]">
         <Sparkles size={16} className="mr-2 animate-pulse text-emerald-300" />
         正在加载本地数据…
       </div>
@@ -186,7 +202,7 @@ export default function App() {
           </div>
           <div className="leading-tight">
             <div className="text-sm font-semibold tracking-tight">TaskBoard</div>
-            <div className="text-[10px] text-slate-500">local-first · 承诺图</div>
+            <div className="text-[10px] text-[var(--t3)]">local-first · 承诺图</div>
           </div>
         </div>
 
@@ -205,14 +221,23 @@ export default function App() {
           <button
             type="button"
             onClick={() => setStatsOpen(true)}
-            className="flex h-8 items-center gap-1.5 rounded-lg border border-[var(--line)] bg-[var(--panel)] px-2.5 text-[11px] text-slate-300 hover:bg-white/[0.04]"
+            className="flex h-8 items-center gap-1.5 rounded-lg border border-[var(--line)] bg-[var(--panel)] px-2.5 text-[11px] text-[var(--t2)] hover:bg-[var(--hover)]"
           >
             <BarChart3 size={13} /> 周统计
           </button>
           <button
             type="button"
+            onClick={() => void setSetting("theme", theme === "dark" ? "light" : "dark")}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--panel)] text-[var(--t3)] hover:text-[var(--t1)]"
+            title={theme === "dark" ? "切换到浅色" : "切换到深色"}
+            aria-label={theme === "dark" ? "切换到浅色" : "切换到深色"}
+          >
+            {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
+          </button>
+          <button
+            type="button"
             onClick={() => setSettingsOpen(true)}
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--panel)] text-slate-400 hover:text-slate-200"
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--panel)] text-[var(--t3)] hover:text-[var(--t1)]"
             title="设置"
           >
             <Settings2 size={14} />
@@ -224,14 +249,14 @@ export default function App() {
         <main className="flex min-w-0 flex-1 flex-col gap-2 p-3">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <h1 className="text-sm font-semibold tracking-tight text-slate-200">
+              <h1 className="text-sm font-semibold tracking-tight text-[var(--t1)]">
                 {BOARD_LABEL[board]}承诺图
               </h1>
-              <span className="text-[10px] text-slate-500">
+              <span className="text-[10px] text-[var(--t3)]">
                 {board === "week" ? "日板聚合 + 周级承诺" : "拖点调整 · 右键动量"}
               </span>
             </div>
-            <div className="flex items-center gap-2 text-[10px] text-slate-500">
+            <div className="flex items-center gap-2 text-[10px] text-[var(--t3)]">
               <span className="rounded-full border border-[var(--line)] bg-[var(--panel)] px-2 py-0.5">
                 {chartPlacements.length} 承诺
               </span>
@@ -266,10 +291,11 @@ export default function App() {
               childMode={
                 (data?.settings.child_view_mode as "direct" | "breadcrumb" | "tree") ?? "direct"
               }
+              theme={theme}
             />
           </section>
 
-          <div className="flex items-center gap-3 px-1 text-[10px] text-slate-500">
+          <div className="flex items-center gap-3 px-1 text-[10px] text-[var(--t3)]">
             <span className="flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-[var(--q1)]" /> Q1 立即
             </span>
@@ -282,7 +308,7 @@ export default function App() {
             <span className="flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-[var(--q4)]" /> Q4 删/归档
             </span>
-            <span className="ml-auto text-slate-600">
+            <span className="ml-auto text-[var(--t4)]">
               颜色 = {data?.settings.color_by === "project" ? "项目" : "标签组"} · 拖拽 / 右键 /
               双击
             </span>
@@ -298,14 +324,14 @@ export default function App() {
         </aside>
       </div>
 
-      <footer className="flex h-8 shrink-0 items-center gap-4 border-t border-[var(--line)] bg-[var(--panel-2)] px-4 text-[10px] text-slate-500">
+      <footer className="flex h-8 shrink-0 items-center gap-4 border-t border-[var(--line)] bg-[var(--panel-2)] px-4 text-[10px] text-[var(--t3)]">
         <span className="flex items-center gap-1.5">
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
           SQLite · WAL · 本地
         </span>
-        <span className="text-slate-700">|</span>
+        <span className="text-[var(--t5)]">|</span>
         <span>Tauri 2 · React 19 · D3 · TipTap</span>
-        <span className="ml-auto flex items-center gap-1 text-slate-600">
+        <span className="ml-auto flex items-center gap-1 text-[var(--t4)]">
           <ListTree size={11} /> 拖动树节点到左侧图 = 承诺
         </span>
       </footer>
@@ -339,7 +365,7 @@ export default function App() {
           <button
             type="button"
             onClick={clearError}
-            className="rounded px-2 py-1 text-red-200 hover:bg-white/10"
+            className="rounded px-2 py-1 text-red-200 hover:bg-[var(--hover-strong)]"
           >
             关闭
           </button>

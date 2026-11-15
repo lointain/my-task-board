@@ -1,4 +1,4 @@
-import Placeholder from "@tiptap/extension-placeholder";
+﻿import Placeholder from "@tiptap/extension-placeholder";
 import TaskItem from "@tiptap/extension-task-item";
 import TaskList from "@tiptap/extension-task-list";
 import { EditorContent, useEditor } from "@tiptap/react";
@@ -44,7 +44,7 @@ function ToolButton({ label, active, disabled, onClick, children }: ToolButtonPr
         "flex h-7 w-7 items-center justify-center rounded-md border text-[13px] transition-colors",
         active
           ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-300"
-          : "border-transparent text-slate-400 hover:border-[var(--line)] hover:bg-white/5 hover:text-slate-200",
+          : "border-transparent text-[var(--t3)] hover:border-[var(--line)] hover:bg-[var(--hover)] hover:text-[var(--t1)]",
         disabled ? "cursor-not-allowed opacity-30" : "",
       ].join(" ")}
     >
@@ -78,7 +78,7 @@ export function NoteEditor() {
   });
 
   if (!editor) {
-    return <div className="h-[220px] animate-pulse rounded-lg bg-white/5" />;
+    return <div className="h-[220px] animate-pulse rounded-lg bg-[var(--hover)]" />;
   }
 
   return (
@@ -142,7 +142,7 @@ export function NoteEditor() {
         >
           <Redo2 size={14} />
         </ToolButton>
-        <span className="ml-auto pr-1 text-[10px] uppercase tracking-wider text-slate-500">
+        <span className="ml-auto pr-1 text-[10px] uppercase tracking-wider text-[var(--t3)]">
           Markdown
         </span>
       </div>
@@ -151,7 +151,7 @@ export function NoteEditor() {
         <EditorContent editor={editor} />
       </div>
 
-      <div className="flex items-center justify-between border-t border-[var(--line-soft)] px-3 py-1.5 text-[10px] text-slate-500">
+      <div className="flex items-center justify-between border-t border-[var(--line-soft)] px-3 py-1.5 text-[10px] text-[var(--t3)]">
         <span>自动保存 · 本地</span>
         <span>{count} 字</span>
       </div>

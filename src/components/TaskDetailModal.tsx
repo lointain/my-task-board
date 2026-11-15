@@ -1,4 +1,4 @@
-import Image from "@tiptap/extension-image";
+﻿import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import TaskItem from "@tiptap/extension-task-item";
 import TaskList from "@tiptap/extension-task-list";
@@ -57,7 +57,7 @@ function EditorButton({
         "flex h-6 w-6 items-center justify-center rounded-md",
         active
           ? "bg-emerald-400/10 text-emerald-300"
-          : "text-slate-500 hover:bg-white/5 hover:text-slate-200",
+          : "text-[var(--t3)] hover:bg-[var(--hover)] hover:text-[var(--t1)]",
       ].join(" ")}
     >
       {children}
@@ -88,7 +88,7 @@ function TagPicker({
   };
 
   if (groups.length === 0) {
-    return <p className="text-[11px] text-slate-500">还没有标签组，去设置里添加。</p>;
+    return <p className="text-[11px] text-[var(--t3)]">还没有标签组，去设置里添加。</p>;
   }
 
   return (
@@ -98,10 +98,10 @@ function TagPicker({
         return (
           <div key={group.id}>
             <div className="mb-1.5 flex items-center gap-2">
-              <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-500">
+              <span className="text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--t3)]">
                 {group.name}
               </span>
-              <span className="text-[9px] text-slate-600">
+              <span className="text-[9px] text-[var(--t4)]">
                 {group.mode === "single" ? "单选" : "多选"}
               </span>
             </div>
@@ -117,7 +117,7 @@ function TagPicker({
                       "flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] transition-colors",
                       active
                         ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200"
-                        : "border-[var(--line)] text-slate-400 hover:border-slate-500/50 hover:text-slate-200",
+                        : "border-[var(--line)] text-[var(--t3)] hover:border-[var(--t4)] hover:text-[var(--t1)]",
                     ].join(" ")}
                   >
                     <span
@@ -130,7 +130,7 @@ function TagPicker({
                 );
               })}
               {groupTags.length === 0 ? (
-                <span className="text-[10px] text-slate-600">暂无标签</span>
+                <span className="text-[10px] text-[var(--t4)]">暂无标签</span>
               ) : null}
             </div>
           </div>
@@ -250,7 +250,7 @@ export function TaskDetailModal({ task, onClose }: TaskDetailModalProps) {
           <button
             type="button"
             onClick={onClose}
-            className="h-8 rounded-lg border border-[var(--line)] px-3 text-[11px] text-slate-300 hover:bg-white/5"
+            className="h-8 rounded-lg border border-[var(--line)] px-3 text-[11px] text-[var(--t2)] hover:bg-[var(--hover)]"
           >
             取消
           </button>
@@ -278,7 +278,7 @@ export function TaskDetailModal({ task, onClose }: TaskDetailModalProps) {
               "mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded border",
               status === "done"
                 ? "border-emerald-400 bg-emerald-400 text-emerald-950"
-                : "border-slate-600 text-transparent hover:border-emerald-400",
+                : "border-[var(--line)] text-transparent hover:border-emerald-400",
             ].join(" ")}
             title="完成 / 取消完成"
           >
@@ -298,7 +298,7 @@ export function TaskDetailModal({ task, onClose }: TaskDetailModalProps) {
               <input
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
-                className="min-w-0 flex-1 bg-transparent text-lg font-semibold tracking-tight text-slate-100 outline-none"
+                className="min-w-0 flex-1 bg-transparent text-lg font-semibold tracking-tight text-[var(--t1)] outline-none"
               />
             </div>
             <EmojiPickerModal
@@ -311,7 +311,7 @@ export function TaskDetailModal({ task, onClose }: TaskDetailModalProps) {
               <select
                 value={status}
                 onChange={(event) => setStatus(event.target.value as TaskStatus)}
-                className="h-7 rounded-md border border-[var(--line)] bg-[var(--panel-2)] px-2 text-[11px] text-slate-300 outline-none"
+                className="h-7 rounded-md border border-[var(--line)] bg-[var(--panel-2)] px-2 text-[11px] text-[var(--t2)] outline-none"
               >
                 {(["todo", "doing", "done", "archived"] as TaskStatus[]).map((value) => (
                   <option key={value} value={value}>
@@ -319,17 +319,17 @@ export function TaskDetailModal({ task, onClose }: TaskDetailModalProps) {
                   </option>
                 ))}
               </select>
-              <label className="flex h-7 items-center gap-1.5 rounded-md border border-[var(--line)] px-2 text-[11px] text-slate-400">
+              <label className="flex h-7 items-center gap-1.5 rounded-md border border-[var(--line)] px-2 text-[11px] text-[var(--t3)]">
                 截止
                 <input
                   type="date"
                   value={dueAt}
                   onChange={(event) => setDueAt(event.target.value)}
-                  className="bg-transparent text-slate-300 outline-none"
+                  className="bg-transparent text-[var(--t2)] outline-none"
                 />
               </label>
               {task.dueSource ? (
-                <span className="text-[10px] text-slate-500">
+                <span className="text-[10px] text-[var(--t3)]">
                   {task.dueSource === "own" ? "自己的截止日" : `继承自「${task.dueSource}」`}
                 </span>
               ) : null}
@@ -344,13 +344,15 @@ export function TaskDetailModal({ task, onClose }: TaskDetailModalProps) {
             className="flex w-full items-center gap-2 px-3 py-2 text-left"
           >
             {propsOpen ? (
-              <ChevronDown size={13} className="text-slate-500" />
+              <ChevronDown size={13} className="text-[var(--t3)]" />
             ) : (
-              <ChevronRight size={13} className="text-slate-500" />
+              <ChevronRight size={13} className="text-[var(--t3)]" />
             )}
-            <span className="text-xs font-medium text-slate-300">属性</span>
-            <span className="min-w-0 flex-1 truncate text-[10px] text-slate-500">{tagSummary}</span>
-            <span className="shrink-0 text-[9px] text-slate-600">标签组</span>
+            <span className="text-xs font-medium text-[var(--t2)]">属性</span>
+            <span className="min-w-0 flex-1 truncate text-[10px] text-[var(--t3)]">
+              {tagSummary}
+            </span>
+            <span className="shrink-0 text-[9px] text-[var(--t4)]">标签组</span>
           </button>
           {propsOpen ? (
             <div className="border-t border-[var(--line-soft)] px-3.5 pb-3 pt-2.5">
@@ -366,8 +368,8 @@ export function TaskDetailModal({ task, onClose }: TaskDetailModalProps) {
 
         <div className="rounded-xl border border-[var(--line)] bg-[var(--panel-2)]">
           <div className="flex items-center justify-between border-b border-[var(--line-soft)] px-3 py-2">
-            <h3 className="text-xs font-medium text-slate-300">说明</h3>
-            <span className="text-[9px] text-slate-600">可留空</span>
+            <h3 className="text-xs font-medium text-[var(--t2)]">说明</h3>
+            <span className="text-[9px] text-[var(--t4)]">可留空</span>
           </div>
           <div className="flex items-center gap-0.5 border-b border-[var(--line-soft)] px-2 py-1">
             <EditorButton
@@ -409,7 +411,7 @@ export function TaskDetailModal({ task, onClose }: TaskDetailModalProps) {
             >
               <ImageIcon size={13} />
             </EditorButton>
-            <span className="ml-auto text-[9px] text-slate-600">`[]` 生成待办</span>
+            <span className="ml-auto text-[9px] text-[var(--t4)]">`[]` 生成待办</span>
           </div>
           <div className="max-h-[320px] overflow-y-auto px-3.5 py-3">
             <EditorContent editor={editor} />

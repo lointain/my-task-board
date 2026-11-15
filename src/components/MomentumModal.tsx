@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import type { Placement, Task } from "../data/types";
 import { useAppStore } from "../store/useAppStore";
 import { Modal } from "./Modal";
@@ -38,7 +38,7 @@ export function MomentumModal({ task, placement, onClose }: MomentumModalProps) 
           <button
             type="button"
             onClick={onClose}
-            className="h-8 rounded-lg border border-[var(--line)] px-3 text-[11px] text-slate-300 hover:bg-white/5"
+            className="h-8 rounded-lg border border-[var(--line)] px-3 text-[11px] text-[var(--t2)] hover:bg-[var(--hover)]"
           >
             取消
           </button>
@@ -63,12 +63,12 @@ export function MomentumModal({ task, placement, onClose }: MomentumModalProps) 
     >
       <div className="space-y-4">
         <label className="block">
-          <span className="mb-1.5 block text-[11px] text-slate-400">截止日期</span>
+          <span className="mb-1.5 block text-[11px] text-[var(--t3)]">截止日期</span>
           <input
             type="date"
             value={dueAt}
             onChange={(event) => setDueAt(event.target.value)}
-            className="h-9 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-2)] px-3 text-sm text-slate-200 outline-none focus:border-emerald-400/40"
+            className="h-9 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-2)] px-3 text-sm text-[var(--t1)] outline-none focus:border-emerald-400/40"
           />
           <div className="mt-1.5 flex flex-wrap items-center gap-1">
             {[
@@ -86,7 +86,7 @@ export function MomentumModal({ task, placement, onClose }: MomentumModalProps) 
                   const key = `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, "0")}-${`${date.getDate()}`.padStart(2, "0")}`;
                   setDueAt(key);
                 }}
-                className="h-6 rounded-md border border-[var(--line)] px-2 text-[10px] text-slate-300 hover:border-emerald-400/40 hover:text-emerald-200"
+                className="h-6 rounded-md border border-[var(--line)] px-2 text-[10px] text-[var(--t2)] hover:border-emerald-400/40 hover:text-emerald-200"
               >
                 {preset.label}
               </button>
@@ -94,18 +94,18 @@ export function MomentumModal({ task, placement, onClose }: MomentumModalProps) 
             <button
               type="button"
               onClick={() => setDueAt("")}
-              className="h-6 rounded-md px-2 text-[10px] text-slate-500 hover:text-slate-300"
+              className="h-6 rounded-md px-2 text-[10px] text-[var(--t3)] hover:text-[var(--t2)]"
             >
               清除
             </button>
           </div>
-          <span className="mt-1 block text-[10px] text-slate-600">
+          <span className="mt-1 block text-[10px] text-[var(--t4)]">
             只影响动量和逾期筛选；不影响是否上图。留空表示无截止日。
           </span>
         </label>
 
         <div>
-          <span className="mb-1.5 block text-[11px] text-slate-400">动量模式</span>
+          <span className="mb-1.5 block text-[11px] text-[var(--t3)]">动量模式</span>
           <div className="flex gap-1 rounded-lg border border-[var(--line)] p-0.5">
             {(["auto", "manual"] as const).map((value) => (
               <button
@@ -115,8 +115,8 @@ export function MomentumModal({ task, placement, onClose }: MomentumModalProps) 
                 className={[
                   "h-7 flex-1 rounded-md text-[11px]",
                   mode === value
-                    ? "bg-white/[0.08] text-slate-100"
-                    : "text-slate-500 hover:text-slate-300",
+                    ? "bg-[var(--hover-strong)] text-[var(--t1)]"
+                    : "text-[var(--t3)] hover:text-[var(--t2)]",
                 ].join(" ")}
               >
                 {value === "auto" ? "自动（按截止日）" : "手动"}
@@ -127,29 +127,29 @@ export function MomentumModal({ task, placement, onClose }: MomentumModalProps) 
 
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
-            <span className="mb-1.5 block text-[11px] text-slate-400">x 速度（点/天）</span>
+            <span className="mb-1.5 block text-[11px] text-[var(--t3)]">x 速度（点/天）</span>
             <input
               type="number"
               step="0.05"
               value={vx}
               disabled={mode === "auto"}
               onChange={(event) => setVx(Number(event.target.value))}
-              className="h-9 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-2)] px-3 text-sm text-slate-200 outline-none disabled:opacity-40"
+              className="h-9 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-2)] px-3 text-sm text-[var(--t1)] outline-none disabled:opacity-40"
             />
           </label>
           <label className="block">
-            <span className="mb-1.5 block text-[11px] text-slate-400">y 速度（点/天）</span>
+            <span className="mb-1.5 block text-[11px] text-[var(--t3)]">y 速度（点/天）</span>
             <input
               type="number"
               step="0.05"
               value={vy}
               onChange={(event) => setVy(Number(event.target.value))}
-              className="h-9 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-2)] px-3 text-sm text-slate-200 outline-none"
+              className="h-9 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-2)] px-3 text-sm text-[var(--t1)] outline-none"
             />
           </label>
         </div>
 
-        <p className="rounded-lg border border-[var(--line)] bg-[var(--panel-2)] px-3 py-2 text-[10px] leading-relaxed text-slate-500">
+        <p className="rounded-lg border border-[var(--line)] bg-[var(--panel-2)] px-3 py-2 text-[10px] leading-relaxed text-[var(--t3)]">
           自动模式：x 会朝 100 推进，越接近截止日越快。手动模式：按你设置的 x/y
           速度移动。顺延到下一个日板时，x 会重算，y 保留。
         </p>

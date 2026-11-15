@@ -1,4 +1,4 @@
-import { CheckCircle2, Database, RefreshCw, TriangleAlert } from "lucide-react";
+﻿import { CheckCircle2, Database, RefreshCw, TriangleAlert } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { fetchHello, type HelloPayload, runningInTauri } from "../lib/hello";
 
@@ -33,7 +33,7 @@ export function HelloCard() {
     <section className="rounded-xl border border-[var(--line)] bg-[var(--panel-2)] p-3.5">
       <div className="mb-3 flex items-center gap-2">
         <Database size={14} className="text-emerald-300" />
-        <h3 className="text-xs font-medium tracking-wide text-slate-300">Rust ↔ SQLite 连通性</h3>
+        <h3 className="text-xs font-medium tracking-wide text-[var(--t2)]">Rust ↔ SQLite 连通性</h3>
         <span
           className={[
             "ml-auto rounded-full px-2 py-0.5 text-[10px]",
@@ -45,7 +45,7 @@ export function HelloCard() {
       </div>
 
       {state.kind === "loading" && (
-        <div className="flex items-center gap-2 text-xs text-slate-400">
+        <div className="flex items-center gap-2 text-xs text-[var(--t3)]">
           <RefreshCw size={13} className="animate-spin" />
           正在调用 Rust command 并读取 SQLite…
         </div>
@@ -58,12 +58,12 @@ export function HelloCard() {
             <span>{state.payload.message}</span>
           </div>
           <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px]">
-            <dt className="text-slate-500">SQLite</dt>
-            <dd className="text-right font-mono text-slate-300">{state.payload.sqliteVersion}</dd>
-            <dt className="text-slate-500">App</dt>
-            <dd className="text-right font-mono text-slate-300">v{state.payload.appVersion}</dd>
-            <dt className="text-slate-500">数据位置</dt>
-            <dd className="text-right text-slate-400">%APPDATA%/com.yao.taskboard</dd>
+            <dt className="text-[var(--t3)]">SQLite</dt>
+            <dd className="text-right font-mono text-[var(--t2)]">{state.payload.sqliteVersion}</dd>
+            <dt className="text-[var(--t3)]">App</dt>
+            <dd className="text-right font-mono text-[var(--t2)]">v{state.payload.appVersion}</dd>
+            <dt className="text-[var(--t3)]">数据位置</dt>
+            <dd className="text-right text-[var(--t3)]">%APPDATA%/com.yao.taskboard</dd>
           </dl>
         </div>
       )}
@@ -77,7 +77,7 @@ export function HelloCard() {
           <button
             type="button"
             onClick={() => void load()}
-            className="inline-flex items-center gap-1.5 rounded-md border border-[var(--line)] px-2.5 py-1 text-[11px] text-slate-300 hover:bg-white/5"
+            className="inline-flex items-center gap-1.5 rounded-md border border-[var(--line)] px-2.5 py-1 text-[11px] text-[var(--t2)] hover:bg-[var(--hover)]"
           >
             <RefreshCw size={12} />
             重试

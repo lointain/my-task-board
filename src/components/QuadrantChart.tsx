@@ -10,6 +10,11 @@ import { useDragStore } from "../lib/drag";
 import { matchesFilter } from "../lib/filter";
 import { ChartTooltip, type ChildViewMode } from "./ChartTooltip";
 
+function cssColor(name: string, fallback: string) {
+  if (typeof window === "undefined") return fallback;
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+}
+
 const WIDTH = CHART.WIDTH;
 const HEIGHT = CHART.HEIGHT;
 const MARGIN = CHART.MARGIN;
@@ -65,6 +70,7 @@ interface QuadrantChartProps {
   onToggleDone: (taskId: string, done: boolean) => void;
   onToggleDoing: (taskId: string) => void;
   childMode: ChildViewMode;
+  theme: "dark" | "light";
   onContextMenu: (taskId: string, x: number, y: number) => void;
 }
 
@@ -85,6 +91,7 @@ export function QuadrantChart({
   onToggleDone,
   onToggleDoing,
   childMode,
+  theme,
   onContextMenu,
 }: QuadrantChartProps) {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -175,6 +182,24 @@ export function QuadrantChart({
     const svg = select(svgEl);
     svg.selectAll("*").remove();
 
+    // 子组件的 effect 先于父组件执行，所以这里自己先把主题写上去再读变量
+    document.documentElement.dataset.theme = theme;
+
+    // 主题色：从 CSS 变量读，切换主题时随 settings 变化重绘
+    const css = getComputedStyle(document.documentElement);
+    const themeColor = (name: string, fallback: string) =>
+      css.getPropertyValue(name).trim() || fallback;
+    const colors = {
+      bg: themeColor("--chart-bg", "#0e141b"),
+      border: themeColor("--chart-border", "#1f2a37"),
+      label: themeColor("--chart-label", "#9aa7b7"),
+      dotStroke: themeColor("--chart-dot-stroke", "#0b0f14"),
+      momentum: themeColor("--chart-momentum", "#94a3b8"),
+      handle: themeColor("--chart-handle", "#e2e8f0"),
+      ringTrack: themeColor("--chart-ring-track", "rgba(255,255,255,0.12)"),
+      text: themeColor("--t1", "#e6edf3"),
+    };
+
     // 反向 x 轴：紧迫度 100 在左、0 在右
     const x = scaleLinear().domain([100, 0]).range([0, INNER_W]);
     const y = scaleLinear().domain([0, 100]).range([INNER_H, 0]);
@@ -193,8 +218,8 @@ export function QuadrantChart({
       .attr("width", INNER_W)
       .attr("height", INNER_H)
       .attr("rx", 12)
-      .attr("fill", "#0e141b")
-      .attr("stroke", "#1f2a37");
+      .attr("fill", colors.bg)
+      .attr("stroke", colors.border);
 
     root
       .selectAll("rect.quadrant")
@@ -204,7 +229,7 @@ export function QuadrantChart({
       .attr("y", (d) => y(d.y1))
       .attr("width", (d) => Math.abs(x(d.x1) - x(d.x0)))
       .attr("height", (d) => y(d.y0) - y(d.y1))
-      .attr("fill", (d) => d.color)
+      .attr("fill", (d) => cssColor(`--${d.id}`, d.color))
       .attr("opacity", 0.045);
 
     const ticks = [0, 25, 50, 75, 100];
@@ -241,7 +266,7 @@ export function QuadrantChart({
         .attr("x", left ? 14 : INNER_W - 14)
         .attr("y", top ? 24 : INNER_H - 14)
         .attr("text-anchor", left ? "start" : "end")
-        .attr("fill", q.color)
+        .attr("fill", cssColor(`--${q.id}`, q.color))
         .attr("opacity", 0.8)
         .attr("font-size", 11)
         .text(q.label);
@@ -256,7 +281,7 @@ export function QuadrantChart({
       .call(xAxis)
       .call((g) => g.select(".domain").remove())
       .selectAll("text")
-      .attr("fill", "#64748b")
+      .attr("fill", colors.label)
       .attr("font-size", 10);
 
     root
@@ -264,7 +289,7 @@ export function QuadrantChart({
       .call(yAxis)
       .call((g) => g.select(".domain").remove())
       .selectAll("text")
-      .attr("fill", "#64748b")
+      .attr("fill", colors.label)
       .attr("font-size", 10);
 
     root
@@ -347,7 +372,7 @@ export function QuadrantChart({
         d.emoji ? "transparent" : colorForTask(d.task, taskMap, d.tagIds, tags, settings),
       )
       .attr("stroke", (d) =>
-        d.emoji ? "none" : isOverdue(d.task, dateKey(new Date())) ? "#f87171" : "#0b0f14",
+        d.emoji ? "none" : isOverdue(d.task, dateKey(new Date())) ? "#f87171" : colors.dotStroke,
       )
       .attr("stroke-width", 1.5);
 
@@ -378,7 +403,7 @@ export function QuadrantChart({
       .attr("class", "ring-track")
       .attr("r", ringR)
       .attr("fill", "none")
-      .attr("stroke", "rgba(255,255,255,0.12)")
+      .attr("stroke", colors.ringTrack)
       .attr("stroke-width", 2);
 
     points
@@ -418,7 +443,7 @@ export function QuadrantChart({
         const ex = -vx * horizon * pxPerUrgency;
         const ey = -vy * horizon * pxPerImportance;
         const crossing = d.placement.x < 50 && d.placement.x + vx * horizon >= 50;
-        const color = crossing ? "#fbbf24" : "#94a3b8";
+        const color = crossing ? "#fbbf24" : colors.momentum;
 
         group
           .append("line")
@@ -543,7 +568,7 @@ export function QuadrantChart({
         .attr("x", (d) => (d.placement.x < 18 ? -10 : 10))
         .attr("text-anchor", (d) => (d.placement.x < 18 ? "end" : "start"))
         .attr("y", 4)
-        .attr("fill", "#9aa7b7")
+        .attr("fill", colors.label)
         .attr("font-size", 10)
         .attr("pointer-events", "none")
         .text((d) => shortTitle(d.task.title, 14));
@@ -613,6 +638,7 @@ export function QuadrantChart({
     onOpenDetail,
     onSelect,
     settings,
+    theme,
     tags,
     taskMap,
   ]);
@@ -649,7 +675,7 @@ export function QuadrantChart({
       .attr("y1", 0)
       .attr("x2", startX)
       .attr("y2", startY)
-      .attr("stroke", "#e2e8f0")
+      .attr("stroke", cssColor("--chart-handle", "#e2e8f0"))
       .attr("stroke-width", 1)
       .attr("stroke-dasharray", "3 3")
       .attr("opacity", 0.3)
@@ -661,8 +687,8 @@ export function QuadrantChart({
       .attr("cx", startX)
       .attr("cy", startY)
       .attr("r", 4)
-      .attr("fill", hasVector ? "#e2e8f0" : "transparent")
-      .attr("stroke", "#e2e8f0")
+      .attr("fill", hasVector ? cssColor("--chart-handle", "#e2e8f0") : "transparent")
+      .attr("stroke", cssColor("--chart-handle", "#e2e8f0"))
       .attr("stroke-width", 1.2)
       .attr("stroke-opacity", hasVector ? 1 : 0.6)
       .attr("cursor", "crosshair")
@@ -681,7 +707,10 @@ export function QuadrantChart({
           moved = true;
           lastX = Math.max(-INNER_W, Math.min(INNER_W, event.x));
           lastY = Math.max(-INNER_H, Math.min(INNER_H, event.y));
-          select(handle.node()).attr("cx", lastX).attr("cy", lastY).attr("fill", "#e2e8f0");
+          select(handle.node())
+            .attr("cx", lastX)
+            .attr("cy", lastY)
+            .attr("fill", cssColor("--chart-handle", "#e2e8f0"));
           preview.attr("x2", lastX).attr("y2", lastY).attr("opacity", 0.6);
         })
         .on("end", () => {
@@ -710,9 +739,17 @@ export function QuadrantChart({
         group
           .select("circle.point-dot")
           .attr("r", active ? 7.5 : 5.5)
-          .attr("stroke", active ? "#e6edf3" : "#0b0f14")
+          .attr(
+            "stroke",
+            active ? cssColor("--t1", "#e6edf3") : cssColor("--chart-dot-stroke", "#0b0f14"),
+          )
           .attr("stroke-width", active ? 2 : 1.5);
-        group.select("text.point-label").attr("fill", active ? "#e6edf3" : "#9aa7b7");
+        group
+          .select("text.point-label")
+          .attr(
+            "fill",
+            active ? cssColor("--t1", "#e6edf3") : cssColor("--chart-label", "#9aa7b7"),
+          );
       });
   }, [selectedId, entries]);
 
@@ -827,7 +864,7 @@ export function QuadrantChart({
           </span>
         </div>
       ) : null}
-      <div className="pointer-events-none absolute right-3 top-2 flex items-center gap-2 text-[10px] text-slate-500">
+      <div className="pointer-events-none absolute right-3 top-2 flex items-center gap-2 text-[10px] text-[var(--t3)]">
         {hiddenCount > 0 ? (
           <span className="rounded-full border border-[var(--line)] bg-[var(--bg)]/80 px-2 py-0.5">
             已隐藏 {hiddenCount}

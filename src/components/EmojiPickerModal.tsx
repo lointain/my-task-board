@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { Modal } from "./Modal";
 
 const GROUPS: Array<{ name: string; emojis: string[] }> = [
@@ -56,14 +56,14 @@ export function EmojiPickerModal({ open, value, onPick, onClose }: EmojiPickerMo
               setDraft("");
               setQuery("");
             }}
-            className="mr-auto h-8 rounded-lg px-2.5 text-[11px] text-slate-400 hover:bg-white/5 hover:text-slate-200"
+            className="mr-auto h-8 rounded-lg px-2.5 text-[11px] text-[var(--t3)] hover:bg-[var(--hover)] hover:text-[var(--t1)]"
           >
             清除图标
           </button>
           <button
             type="button"
             onClick={onClose}
-            className="h-8 rounded-lg border border-[var(--line)] px-3 text-[11px] text-slate-300 hover:bg-white/5"
+            className="h-8 rounded-lg border border-[var(--line)] px-3 text-[11px] text-[var(--t2)] hover:bg-[var(--hover)]"
           >
             关闭
           </button>
@@ -83,7 +83,7 @@ export function EmojiPickerModal({ open, value, onPick, onClose }: EmojiPickerMo
               }
             }}
             placeholder="也可以直接粘贴一个 emoji 后回车"
-            className="h-8 min-w-0 flex-1 rounded-lg border border-[var(--line)] bg-[var(--panel-2)] px-2.5 text-[12px] text-slate-200 outline-none focus:border-emerald-400/40"
+            className="h-8 min-w-0 flex-1 rounded-lg border border-[var(--line)] bg-[var(--panel-2)] px-2.5 text-[12px] text-[var(--t1)] outline-none focus:border-emerald-400/40"
           />
           <button
             type="button"
@@ -103,13 +103,13 @@ export function EmojiPickerModal({ open, value, onPick, onClose }: EmojiPickerMo
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="筛选分类（常用 / 工作 / 生活 / 符号）"
-          className="h-7 w-full rounded-lg border border-[var(--line)] bg-[var(--panel)] px-2.5 text-[11px] text-slate-300 outline-none"
+          className="h-7 w-full rounded-lg border border-[var(--line)] bg-[var(--panel)] px-2.5 text-[11px] text-[var(--t2)] outline-none"
         />
 
         <div className="max-h-[46vh] space-y-3 overflow-y-auto pr-1">
           {filtered.map((group) => (
             <div key={group.name}>
-              <div className="mb-1.5 text-[10px] font-medium uppercase tracking-[0.14em] text-slate-500">
+              <div className="mb-1.5 text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--t3)]">
                 {group.name}
               </div>
               <div className="grid grid-cols-12 gap-0.5">
@@ -123,7 +123,7 @@ export function EmojiPickerModal({ open, value, onPick, onClose }: EmojiPickerMo
                       setDraft("");
                     }}
                     className={[
-                      "flex h-8 items-center justify-center rounded-md text-lg hover:bg-white/10",
+                      "flex h-8 items-center justify-center rounded-md text-lg hover:bg-[var(--hover-strong)]",
                       emoji === value ? "bg-emerald-400/15 ring-1 ring-emerald-400/50" : "",
                     ].join(" ")}
                     title={emoji}

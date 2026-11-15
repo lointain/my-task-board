@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useAppStore } from "../store/useAppStore";
 import { Modal } from "./Modal";
 
@@ -35,7 +35,7 @@ export function ProjectModal({ open, onClose }: ProjectModalProps) {
           <button
             type="button"
             onClick={onClose}
-            className="h-8 rounded-lg border border-[var(--line)] px-3 text-[11px] text-slate-300 hover:bg-white/5"
+            className="h-8 rounded-lg border border-[var(--line)] px-3 text-[11px] text-[var(--t2)] hover:bg-[var(--hover)]"
           >
             取消
           </button>
@@ -55,7 +55,7 @@ export function ProjectModal({ open, onClose }: ProjectModalProps) {
     >
       <div className="space-y-4">
         <label className="block">
-          <span className="mb-1.5 block text-[11px] text-slate-400">项目名称</span>
+          <span className="mb-1.5 block text-[11px] text-[var(--t3)]">项目名称</span>
           <input
             autoFocus
             value={title}
@@ -67,21 +67,21 @@ export function ProjectModal({ open, onClose }: ProjectModalProps) {
               }
             }}
             placeholder="例如：TaskBoard 开发"
-            className="h-9 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-2)] px-3 text-sm text-slate-200 outline-none focus:border-emerald-400/40"
+            className="h-9 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-2)] px-3 text-sm text-[var(--t1)] outline-none focus:border-emerald-400/40"
           />
         </label>
         <label className="block">
-          <span className="mb-1.5 block text-[11px] text-slate-400">图标（可选）</span>
+          <span className="mb-1.5 block text-[11px] text-[var(--t3)]">图标（可选）</span>
           <input
             value={emoji}
             onChange={(event) => setEmoji(event.target.value)}
             placeholder="🚀 或任意 emoji"
             maxLength={4}
-            className="h-9 w-24 rounded-lg border border-[var(--line)] bg-[var(--panel-2)] px-3 text-center text-sm text-slate-200 outline-none focus:border-emerald-400/40"
+            className="h-9 w-24 rounded-lg border border-[var(--line)] bg-[var(--panel-2)] px-3 text-center text-sm text-[var(--t1)] outline-none focus:border-emerald-400/40"
           />
         </label>
         <div>
-          <span className="mb-1.5 block text-[11px] text-slate-400">颜色</span>
+          <span className="mb-1.5 block text-[11px] text-[var(--t3)]">颜色</span>
           <div className="flex gap-2">
             {COLORS.map((item) => (
               <button

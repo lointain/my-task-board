@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+﻿import { X } from "lucide-react";
 import { type ReactNode, useEffect, useRef } from "react";
 
 interface ModalProps {
@@ -57,13 +57,13 @@ export function Modal({
       >
         <header className="flex shrink-0 items-start justify-between gap-4 border-b border-[var(--line-soft)] px-5 py-4">
           <div>
-            <h2 className="text-sm font-semibold tracking-tight text-slate-100">{title}</h2>
-            {subtitle ? <p className="mt-0.5 text-[11px] text-slate-500">{subtitle}</p> : null}
+            <h2 className="text-sm font-semibold tracking-tight text-[var(--t1)]">{title}</h2>
+            {subtitle ? <p className="mt-0.5 text-[11px] text-[var(--t3)]">{subtitle}</p> : null}
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-500 hover:bg-white/5 hover:text-slate-200"
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-[var(--t3)] hover:bg-[var(--hover)] hover:text-[var(--t1)]"
             aria-label="关闭"
           >
             <X size={15} />

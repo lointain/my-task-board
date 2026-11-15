@@ -1,4 +1,4 @@
-import type { LucideIcon } from "lucide-react";
+﻿import type { LucideIcon } from "lucide-react";
 import { useEffect } from "react";
 
 export interface MenuItem {
@@ -44,8 +44,8 @@ export function ContextMenu({ x, y, items, onClose }: ContextMenuProps) {
               onClose();
             }}
             className={[
-              "flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] hover:bg-white/[0.06]",
-              item.danger ? "text-red-300" : "text-slate-300",
+              "flex w-full items-center gap-2 px-3 py-2 text-left text-[11px] hover:bg-[var(--hover-strong)]",
+              item.danger ? "text-red-300" : "text-[var(--t2)]",
             ].join(" ")}
           >
             {Icon ? <Icon size={13} /> : <span className="w-[13px]" />}

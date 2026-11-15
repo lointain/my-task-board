@@ -1,4 +1,4 @@
-import {
+﻿import {
   CheckSquare2,
   ChevronDown,
   ChevronRight,
@@ -456,7 +456,7 @@ export function TreeEditor({
         aria-expanded={childCount > 0 ? !isCollapsed : undefined}
         className={[
           "group flex min-h-8 items-center gap-1 rounded-md border border-transparent pr-1 text-xs",
-          selectedId === task.id ? "bg-white/[0.07]" : "hover:bg-white/[0.04]",
+          selectedId === task.id ? "bg-[var(--hover-strong)]" : "hover:bg-[var(--hover)]",
           dragId === task.id ? "opacity-40" : "",
           hint === "before" ? "border-t-emerald-400" : "",
           hint === "after" ? "border-b-emerald-400" : "",
@@ -477,7 +477,7 @@ export function TreeEditor({
       >
         <span
           data-tree-grip={task.id}
-          className="flex h-5 w-3 shrink-0 cursor-grab items-center justify-center text-slate-600 hover:text-slate-300 active:cursor-grabbing"
+          className="flex h-5 w-3 shrink-0 cursor-grab items-center justify-center text-[var(--t4)] hover:text-[var(--t2)] active:cursor-grabbing"
           onPointerDown={(event) => beginDrag(task, event)}
           title="拖动：放到图上=承诺；放到行上=排序/换父级"
         >
@@ -497,14 +497,14 @@ export function TreeEditor({
           {checked ? (
             <CheckSquare2 size={14} className="text-emerald-400" />
           ) : (
-            <Square size={14} className={someDone ? "text-amber-400" : "text-slate-600"} />
+            <Square size={14} className={someDone ? "text-amber-400" : "text-[var(--t4)]"} />
           )}
         </button>
 
         <button
           type="button"
           tabIndex={-1}
-          className="flex h-5 w-4 shrink-0 items-center justify-center text-slate-600 hover:text-slate-300"
+          className="flex h-5 w-4 shrink-0 items-center justify-center text-[var(--t4)] hover:text-[var(--t2)]"
           onClick={(event) => {
             event.stopPropagation();
             if (childCount > 0) toggleCollapse(task.id);
@@ -601,7 +601,7 @@ export function TreeEditor({
           spellCheck={false}
           className={[
             "min-w-0 flex-1 truncate rounded bg-transparent px-0.5 text-xs outline-none focus:bg-[var(--panel)] focus:ring-1 focus:ring-emerald-400/40",
-            done ? "text-slate-500 line-through" : "text-slate-300",
+            done ? "text-[var(--t3)] line-through" : "text-[var(--t2)]",
           ].join(" ")}
         />
 
@@ -634,7 +634,7 @@ export function TreeEditor({
                 ? "bg-red-400/10 text-red-300"
                 : task.effectiveDue === today
                   ? "bg-amber-400/10 text-amber-300"
-                  : "text-slate-500",
+                  : "text-[var(--t3)]",
             ].join(" ")}
             title={
               task.dueSource === "own" ? "自己的截止日" : `继承自 ${task.dueSource ?? "父任务"}`
@@ -645,7 +645,7 @@ export function TreeEditor({
         ) : null}
 
         {childCount > 0 ? (
-          <span className="shrink-0 text-[9px] text-slate-600">
+          <span className="shrink-0 text-[9px] text-[var(--t4)]">
             {kids.filter((kid) => kid.status === "done").length}/{childCount}
           </span>
         ) : null}
@@ -655,7 +655,7 @@ export function TreeEditor({
 
   if (rows.length === 0) {
     return (
-      <div className="px-4 py-10 text-center text-[11px] leading-relaxed text-slate-500">
+      <div className="px-4 py-10 text-center text-[11px] leading-relaxed text-[var(--t3)]">
         {scopeId ? "这个节点还没有子任务。" : "还没有项目。"}
         <br />
         {scopeId ? "按 Enter 新建子任务。" : "点上方「项目」创建第一个。"}

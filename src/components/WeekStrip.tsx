@@ -1,4 +1,4 @@
-import type { Board } from "../data/types";
+﻿import type { Board } from "../data/types";
 import { BOARD_LABEL, dateKey, weekDays } from "../lib/board";
 import { useDragStore } from "../lib/drag";
 import { useAppStore } from "../store/useAppStore";
@@ -45,18 +45,18 @@ export function WeekStrip() {
               active
                 ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-200"
                 : isPast
-                  ? "border-transparent text-slate-600 hover:bg-white/[0.03]"
-                  : "border-transparent text-slate-400 hover:border-[var(--line)] hover:bg-white/[0.04] hover:text-slate-200",
+                  ? "border-transparent text-[var(--t4)] hover:bg-[var(--hover)]"
+                  : "border-transparent text-[var(--t3)] hover:border-[var(--line)] hover:bg-[var(--hover)] hover:text-[var(--t1)]",
               dropRing(day.board),
             ].join(" ")}
           >
             <span className="font-medium">{day.short}</span>
-            <span className="text-[10px] text-slate-500">
+            <span className="text-[10px] text-[var(--t3)]">
               {day.date.getMonth() + 1}/{day.date.getDate()}
             </span>
             {day.isToday ? <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> : null}
             {count > 0 ? (
-              <span className="rounded-full bg-white/[0.06] px-1.5 text-[10px] text-slate-400">
+              <span className="rounded-full bg-[var(--hover-strong)] px-1.5 text-[10px] text-[var(--t3)]">
                 {count}
               </span>
             ) : null}
@@ -72,19 +72,19 @@ export function WeekStrip() {
           "flex h-9 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-xs transition-colors",
           board === "week"
             ? "border-amber-400/40 bg-amber-400/10 text-amber-200"
-            : "border-transparent text-slate-400 hover:border-[var(--line)] hover:bg-white/[0.04] hover:text-slate-200",
+            : "border-transparent text-[var(--t3)] hover:border-[var(--line)] hover:bg-[var(--hover)] hover:text-[var(--t1)]",
           dropRing("week"),
         ].join(" ")}
       >
         <span className="font-medium">周</span>
-        <span className="text-[10px] text-slate-500">全景</span>
+        <span className="text-[10px] text-[var(--t3)]">全景</span>
         {countFor("week") > 0 ? (
-          <span className="rounded-full bg-white/[0.06] px-1.5 text-[10px] text-slate-400">
+          <span className="rounded-full bg-[var(--hover-strong)] px-1.5 text-[10px] text-[var(--t3)]">
             {countFor("week")}
           </span>
         ) : null}
       </button>
-      <span className="ml-1 hidden shrink-0 text-[10px] text-slate-600 xl:inline">
+      <span className="ml-1 hidden shrink-0 text-[10px] text-[var(--t4)] xl:inline">
         {BOARD_LABEL[board]} · 不翻周
       </span>
     </div>

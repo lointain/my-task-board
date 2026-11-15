@@ -151,7 +151,7 @@ export function ChartTooltip({
   return (
     <div
       className={[
-        "absolute z-30 w-[264px] overflow-hidden rounded-xl border border-[var(--line)] bg-[#0d131a]/96 shadow-2xl backdrop-blur-sm",
+        "absolute z-30 w-[264px] overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--tip-bg)] shadow-2xl backdrop-blur-sm",
         interactive ? "pointer-events-auto" : "pointer-events-none",
       ].join(" ")}
       style={{ left: pointer.x + offsetX, top: pointer.y + offsetY }}
@@ -160,12 +160,12 @@ export function ChartTooltip({
       <div className="border-b border-[var(--line-soft)] px-3 py-2">
         <div className="flex items-start gap-1.5">
           <span className="mt-px shrink-0 text-[12px] leading-none">{task.emoji ?? ""}</span>
-          <span className="min-w-0 flex-1 text-[12px] font-medium leading-snug text-slate-100">
+          <span className="min-w-0 flex-1 text-[12px] font-medium leading-snug text-[var(--t1)]">
             {task.title}
           </span>
         </div>
         {path.length > 1 ? (
-          <div className="mt-1 truncate pl-[18px] text-[9px] text-slate-500">
+          <div className="mt-1 truncate pl-[18px] text-[9px] text-[var(--t3)]">
             {path.slice(0, -1).join(" › ")}
           </div>
         ) : null}
@@ -181,20 +181,23 @@ export function ChartTooltip({
           </span>
           <span
             className="rounded px-1 py-px text-[9px]"
-            style={{ backgroundColor: `${quadrant.color}1a`, color: quadrant.color }}
+            style={{
+              backgroundColor: `color-mix(in srgb, ${quadrant.color} 12%, transparent)`,
+              color: quadrant.color,
+            }}
           >
             {quadrant.short} · {quadrant.label}
           </span>
-          <span className="ml-auto text-slate-500">{quadrant.description}</span>
+          <span className="ml-auto text-[var(--t3)]">{quadrant.description}</span>
         </div>
 
-        <div className="flex items-center gap-2 text-slate-400">
-          <span className="text-slate-500">紧迫</span>
-          <span className="font-mono text-slate-200">{Math.round(placement.x)}</span>
-          <span className="text-slate-700">·</span>
-          <span className="text-slate-500">重要</span>
-          <span className="font-mono text-slate-200">{Math.round(placement.y)}</span>
-          <span className="ml-auto text-[9px] text-slate-600">
+        <div className="flex items-center gap-2 text-[var(--t3)]">
+          <span className="text-[var(--t3)]">紧迫</span>
+          <span className="font-mono text-[var(--t1)]">{Math.round(placement.x)}</span>
+          <span className="text-[var(--t5)]">·</span>
+          <span className="text-[var(--t3)]">重要</span>
+          <span className="font-mono text-[var(--t1)]">{Math.round(placement.y)}</span>
+          <span className="ml-auto text-[9px] text-[var(--t4)]">
             {placement.board === "week" ? "周级" : BOARD_LABEL[placement.board]}
           </span>
         </div>
@@ -202,23 +205,23 @@ export function ChartTooltip({
         <div className="flex items-start gap-1.5">
           <CalendarClock
             size={11}
-            className={overdue ? "mt-px shrink-0 text-red-300" : "mt-px shrink-0 text-slate-500"}
+            className={overdue ? "mt-px shrink-0 text-red-300" : "mt-px shrink-0 text-[var(--t3)]"}
           />
-          <span className={overdue ? "text-red-300" : "text-slate-400"}>{dueText}</span>
+          <span className={overdue ? "text-red-300" : "text-[var(--t3)]"}>{dueText}</span>
         </div>
 
         {task.dueSource && task.dueSource !== "own" ? (
           <div className="flex items-start gap-1.5">
-            <AlertTriangle size={11} className="mt-px shrink-0 text-slate-600" />
-            <span className="text-slate-600">截止日继承自「{task.dueSource}」</span>
+            <AlertTriangle size={11} className="mt-px shrink-0 text-[var(--t4)]" />
+            <span className="text-[var(--t4)]">截止日继承自「{task.dueSource}」</span>
           </div>
         ) : null}
 
         <div className="flex items-center gap-1.5">
-          <MoveRight size={11} className="shrink-0 text-slate-500" />
-          <span className="text-slate-400">{momentumText}</span>
+          <MoveRight size={11} className="shrink-0 text-[var(--t3)]" />
+          <span className="text-[var(--t3)]">{momentumText}</span>
           {daysToEdge !== null && placement.momentumMode === "auto" ? (
-            <span className="ml-auto text-[9px] text-slate-600">
+            <span className="ml-auto text-[9px] text-[var(--t4)]">
               {daysToEdge > 0 ? `${daysToEdge} 天后进 Q1` : "已在 Q1"}
             </span>
           ) : null}
@@ -226,11 +229,11 @@ export function ChartTooltip({
 
         {tags.length > 0 ? (
           <div className="flex flex-wrap items-center gap-1 pt-0.5">
-            <TagIcon size={10} className="text-slate-600" />
+            <TagIcon size={10} className="text-[var(--t4)]" />
             {tags.slice(0, 4).map((tag) => (
               <span
                 key={tag.id}
-                className="flex items-center gap-1 rounded border border-[var(--line)] px-1 py-px text-[9px] text-slate-400"
+                className="flex items-center gap-1 rounded border border-[var(--line)] px-1 py-px text-[9px] text-[var(--t3)]"
               >
                 <span
                   className="h-1 w-1 rounded-full"
@@ -245,32 +248,32 @@ export function ChartTooltip({
         {interactive && (childRows.length > 0 || chain.length > 1) ? (
           <div className="mt-1 border-t border-[var(--line-soft)] pt-1.5">
             {chain.length > 1 || childMode === "breadcrumb" ? (
-              <div className="mb-1 flex flex-wrap items-center gap-0.5 text-[9px] text-slate-500">
+              <div className="mb-1 flex flex-wrap items-center gap-0.5 text-[9px] text-[var(--t3)]">
                 {(chain.length > 0 ? chain : [task]).map((node) => (
                   <span key={node.id} className="flex items-center gap-0.5">
                     <button
                       type="button"
                       onClick={() => setFocusId(node.id)}
                       className={[
-                        "rounded px-0.5 hover:bg-white/10",
-                        node.id === focusId ? "text-slate-200" : "hover:text-slate-300",
+                        "rounded px-0.5 hover:bg-[var(--hover-strong)]",
+                        node.id === focusId ? "text-[var(--t1)]" : "hover:text-[var(--t2)]",
                       ].join(" ")}
                     >
                       {node.title}
                     </button>
                     {node.id !== (chain.at(-1)?.id ?? task.id) ? (
-                      <span className="text-slate-700">›</span>
+                      <span className="text-[var(--t5)]">›</span>
                     ) : null}
                   </span>
                 ))}
               </div>
             ) : null}
-            <div className="mb-1 flex items-center justify-between text-[9px] text-slate-500">
+            <div className="mb-1 flex items-center justify-between text-[9px] text-[var(--t3)]">
               <span>
                 子任务 {childRows.length}
                 {childMode === "tree" ? "（整棵）" : ""}
               </span>
-              <span className="text-slate-600">
+              <span className="text-[var(--t4)]">
                 {childRows.filter((row) => row.task.status === "done").length} 完成
               </span>
             </div>
@@ -281,7 +284,7 @@ export function ChartTooltip({
                 return (
                   <div
                     key={child.id}
-                    className="flex items-center gap-1 rounded px-1 py-0.5 hover:bg-white/[0.05]"
+                    className="flex items-center gap-1 rounded px-1 py-0.5 hover:bg-[var(--hover)]"
                     style={{ paddingLeft: depth * 12 + 2 }}
                   >
                     {hasKids ? (
@@ -290,7 +293,7 @@ export function ChartTooltip({
                         onClick={() =>
                           childMode === "tree" ? toggleExpand(child.id) : setFocusId(child.id)
                         }
-                        className="flex h-4 w-3 shrink-0 items-center justify-center text-slate-500 hover:text-slate-200"
+                        className="flex h-4 w-3 shrink-0 items-center justify-center text-[var(--t3)] hover:text-[var(--t1)]"
                         title={childMode === "tree" ? "展开 / 收起" : "进入下一层"}
                         aria-label={childMode === "tree" ? "展开" : "进入下一层"}
                       >
@@ -312,7 +315,7 @@ export function ChartTooltip({
                       {child.status === "done" ? (
                         <CheckSquare2 size={12} className="text-emerald-400" />
                       ) : (
-                        <Square size={12} className="text-slate-600" />
+                        <Square size={12} className="text-[var(--t4)]" />
                       )}
                     </button>
                     <button
@@ -322,7 +325,9 @@ export function ChartTooltip({
                       }}
                       className={[
                         "min-w-0 flex-1 truncate text-left text-[10px]",
-                        child.status === "done" ? "text-slate-500 line-through" : "text-slate-300",
+                        child.status === "done"
+                          ? "text-[var(--t3)] line-through"
+                          : "text-[var(--t2)]",
                         hasKids && childMode !== "tree" ? "hover:text-emerald-200" : "",
                       ].join(" ")}
                       title={child.title}
@@ -337,7 +342,7 @@ export function ChartTooltip({
                         "flex h-4 w-4 shrink-0 items-center justify-center rounded",
                         child.status === "doing"
                           ? "text-amber-300"
-                          : "text-slate-600 hover:text-slate-300",
+                          : "text-[var(--t4)] hover:text-[var(--t2)]",
                       ].join(" ")}
                       title={child.status === "doing" ? "暂停处理" : "开始处理"}
                     >
@@ -350,9 +355,9 @@ export function ChartTooltip({
           </div>
         ) : null}
 
-        <div className="flex items-center gap-2 pt-0.5 text-[9px] text-slate-600">
+        <div className="flex items-center gap-2 pt-0.5 text-[9px] text-[var(--t4)]">
           <span>{task.noteJson ? "有说明" : "无说明"}</span>
-          <span className="text-slate-700">|</span>
+          <span className="text-[var(--t5)]">|</span>
           <span>{interactive ? "右键可改状态" : "双击打开详情"}</span>
         </div>
       </div>

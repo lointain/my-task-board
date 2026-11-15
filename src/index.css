@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
-:root {
+:root,
+[data-theme="dark"] {
   color-scheme: dark;
   --bg: #0b0f14;
   --panel: #111820;
@@ -14,8 +15,72 @@
   --q2: #34d399;
   --q3: #fbbf24;
   --q4: #64748b;
+
+  /* 文本层级 */
+  --t1: #e6edf3;
+  --t2: #c2cbd6;
+  --t3: #8b98a9;
+  --t4: #5b6878;
+  --t5: #3f4b5a;
+
+  /* 交互底色 */
+  --hover: rgb(255 255 255 / 4.5%);
+  --hover-strong: rgb(255 255 255 / 9%);
+  --chip: rgb(255 255 255 / 5%);
+
+  /* 图表 */
+  --chart-bg: #0e141b;
+  --chart-border: #1f2a37;
+  --chart-label: #9aa7b7;
+  --chart-dot-stroke: #0b0f14;
+  --chart-momentum: #94a3b8;
+  --chart-handle: #e2e8f0;
+  --chart-ring-track: rgb(255 255 255 / 12%);
+  --scroll-thumb: #2a3745;
+  --dot-grid: rgb(255 255 255 / 6%);
+  --code-bg: #0a1017;
+  --tip-bg: rgb(13 19 26 / 96%);
+
   font-family:
     "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f4f6f9;
+  --panel: #ffffff;
+  --panel-2: #f1f4f8;
+  --line: #d7dee8;
+  --line-soft: #e6ebf2;
+  --text: #16202b;
+  --muted: #5d6877;
+  --accent: #0f9d76;
+  --q1: #dc5f5f;
+  --q2: #0f9d76;
+  --q3: #c98a12;
+  --q4: #7b8798;
+
+  --t1: #16202b;
+  --t2: #33404f;
+  --t3: #5d6877;
+  --t4: #7b8798;
+  --t5: #98a3b1;
+
+  --hover: rgb(15 23 42 / 5%);
+  --hover-strong: rgb(15 23 42 / 9%);
+  --chip: rgb(15 23 42 / 4%);
+
+  --chart-bg: #ffffff;
+  --chart-border: #d7dee8;
+  --chart-label: #45505f;
+  --chart-dot-stroke: #ffffff;
+  --chart-momentum: #7b8798;
+  --chart-handle: #16202b;
+  --chart-ring-track: rgb(15 23 42 / 12%);
+  --scroll-thumb: #c3ccd8;
+  --dot-grid: rgb(15 23 42 / 7%);
+  --code-bg: #f1f4f8;
+  --tip-bg: rgb(255 255 255 / 97%);
 }
 
 * {
@@ -43,7 +108,7 @@ body {
 /* thin scrollbars */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #2a3745 transparent;
+  scrollbar-color: var(--scroll-thumb) transparent;
 }
 
 *::-webkit-scrollbar {
@@ -52,7 +117,7 @@ body {
 }
 
 *::-webkit-scrollbar-thumb {
-  background: #2a3745;
+  background: var(--scroll-thumb);
   border-radius: 999px;
 }
 
@@ -116,7 +181,7 @@ body {
 }
 
 .tiptap code {
-  background: rgb(255 255 255 / 7%);
+  background: var(--chip);
   border-radius: 4px;
   padding: 0.1em 0.35em;
   font-family: "Cascadia Code", Consolas, monospace;
@@ -124,7 +189,7 @@ body {
 }
 
 .tiptap pre {
-  background: #0a1017;
+  background: var(--code-bg);
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 0.75rem;
@@ -143,7 +208,7 @@ body {
 }
 
 .tiptap p.is-editor-empty:first-child::before {
-  color: #5b6878;
+  color: var(--t4);
   content: attr(data-placeholder);
   float: left;
   height: 0;
@@ -192,7 +257,7 @@ body {
 
 /* subtle dotted background for the chart panel */
 .dot-grid {
-  background-image: radial-gradient(rgb(255 255 255 / 6%) 1px, transparent 1px);
+  background-image: radial-gradient(var(--dot-grid) 1px, transparent 1px);
   background-size: 18px 18px;
 }
 
@@ -203,6 +268,44 @@ body {
 
 .chart-point:hover .halo {
   opacity: 0.2;
+}
+
+/* ------------------------------------------------------------------ */
+/* 浅色主题下的强调色：深底上用的亮色在白底会糊，这里压暗一档        */
+/* ------------------------------------------------------------------ */
+
+[data-theme="light"] .text-emerald-200,
+[data-theme="light"] .text-emerald-300,
+[data-theme="light"] .text-emerald-400 {
+  color: #0b7a5b;
+}
+
+[data-theme="light"] .text-emerald-950 {
+  color: #04281d;
+}
+
+[data-theme="light"] .text-amber-200,
+[data-theme="light"] .text-amber-300,
+[data-theme="light"] .text-amber-400 {
+  color: #96650a;
+}
+
+[data-theme="light"] .text-red-100,
+[data-theme="light"] .text-red-200,
+[data-theme="light"] .text-red-300 {
+  color: #b23b3b;
+}
+
+[data-theme="light"] .text-sky-200 {
+  color: #1c6fa8;
+}
+
+[data-theme="light"] .bg-emerald-400 {
+  background-color: #10a37c;
+}
+
+[data-theme="light"] .hover\:bg-emerald-300:hover {
+  background-color: #0d8f6d;
 }
 
 /* ------------------------------------------------------------------ */
@@ -217,4 +320,5 @@ body.task-dragging {
 body.task-dragging .chart-point {
   cursor: grabbing;
 }
+
 

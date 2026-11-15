@@ -65,6 +65,12 @@ export function TreeEditor({
   const [dropHint, setDropHint] = useState<{ id: string; pos: DropPos } | null>(null);
 
   const treeRef = useRef<HTMLDivElement>(null);
+  /** 记录一次“按下”发生时输入框是否已聚焦（区分“双击全选”和“双击打开”） */
+  const pressRef = useRef<{ at: number; el: Element | null; wasFocused: boolean }>({
+    at: 0,
+    el: null,
+    wasFocused: false,
+  });
   const today = dateKey(new Date());
 
   const tasks = data?.tasks ?? [];
@@ -567,10 +573,28 @@ export function TreeEditor({
             });
           }}
           onKeyDown={(event) => void onKeyDown(event, task)}
+          onMouseDown={(event) => {
+            const el = event.currentTarget;
+            // 第二次按下（detail ≥ 2）拦掉浏览器的“双击选词”，改由 dblclick 全选
+            if (event.detail >= 2 && document.activeElement === el) {
+              event.preventDefault();
+              return;
+            }
+            // 只记录“这一串点击开始前”是否已经聚焦
+            if (event.detail <= 1) {
+              pressRef.current = { at: Date.now(), el, wasFocused: document.activeElement === el };
+            }
+          }}
           onDoubleClick={(event) => {
-            event.stopPropagation();
-            const input = event.currentTarget;
-            window.requestAnimationFrame(() => input.select());
+            const el = event.currentTarget;
+            const press = pressRef.current;
+            if (press.el === el && press.wasFocused) {
+              event.stopPropagation();
+              el.select();
+              return;
+            }
+            // 输入框还没聚焦时双击 = 打开详情（不拦截）
+            onOpenDetail?.(task.id);
           }}
           onFocus={() => onSelect(task.id)}
           onPointerDown={(event) => event.stopPropagation()}

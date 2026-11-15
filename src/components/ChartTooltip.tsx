@@ -2,14 +2,20 @@ import {
   AlertTriangle,
   CalendarClock,
   CheckSquare2,
+  ChevronDown,
+  ChevronRight,
   MoveRight,
   Play,
   Square,
   Tag as TagIcon,
 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import type { Placement, Tag, Task } from "../data/types";
 import { BOARD_LABEL, dateKey } from "../lib/board";
 import { QUADRANTS, quadrantOf } from "../lib/quadrant";
+
+/** 树形视图的展开状态：跨选中、跨重开都保留 */
+const TREE_EXPANDED = new Map<string, boolean>();
 
 export type ChildViewMode = "direct" | "breadcrumb" | "tree";
 
@@ -41,19 +47,29 @@ const STATUS_META: Record<string, { label: string; color: string }> = {
   archived: { label: "已归档", color: "#64748b" },
 };
 
-function collectTree(rootId: string, tasks: Task[]) {
-  const byParent = new Map<string | null, Task[]>();
+function buildByParent(tasks: Task[]) {
+  const byParent = new Map<string, Task[]>();
   for (const task of tasks) {
     if (task.status === "archived") continue;
-    const list = byParent.get(task.parentId) ?? [];
+    const key = task.parentId ?? "";
+    const list = byParent.get(key) ?? [];
     list.push(task);
-    byParent.set(task.parentId, list);
+    byParent.set(key, list);
   }
+  return byParent;
+}
+
+function collectExpanded(
+  rootId: string,
+  byParent: Map<string, Task[]>,
+  _tick: number,
+): Array<{ task: Task; depth: number }> {
   const rows: Array<{ task: Task; depth: number }> = [];
   const walk = (id: string, depth: number) => {
     for (const child of byParent.get(id) ?? []) {
       rows.push({ task: child, depth });
-      walk(child.id, depth + 1);
+      // 默认折叠：只有明确展开过的才往下走
+      if (TREE_EXPANDED.get(child.id)) walk(child.id, depth + 1);
     }
   };
   walk(rootId, 0);
@@ -79,11 +95,39 @@ export function ChartTooltip({
   const overdue = Boolean(task.effectiveDue && task.effectiveDue < today);
   const dueIn = task.effectiveDue ? daysBetween(today, task.effectiveDue) : null;
 
+  const byParent = useMemo(() => buildByParent(tasks), [tasks]);
+  const [focusId, setFocusId] = useState(task.id);
+  const [expandTick, setExpandTick] = useState(0);
+
+  useEffect(() => {
+    setFocusId(task.id);
+  }, [task.id]);
+
+  // 面包屑：从选中节点到当前下钻节点
+  const chain = (() => {
+    if (!interactive) return [] as Task[];
+    const steps: Task[] = [];
+    let cursor: Task | undefined = tasks.find((item) => item.id === focusId) ?? task;
+    const guard = new Set<string>();
+    while (cursor && !guard.has(cursor.id)) {
+      guard.add(cursor.id);
+      steps.unshift(cursor);
+      if (cursor.id === task.id) break;
+      cursor = cursor.parentId ? tasks.find((item) => item.id === cursor?.parentId) : undefined;
+    }
+    return steps;
+  })();
+
+  const toggleExpand = (id: string) => {
+    TREE_EXPANDED.set(id, !TREE_EXPANDED.get(id));
+    setExpandTick((tick) => tick + 1);
+  };
+
   const childRows = (() => {
     if (!interactive) return [];
-    if (childMode === "tree") return collectTree(task.id, tasks).slice(0, 40);
-    const direct = tasks.filter((item) => item.parentId === task.id && item.status !== "archived");
-    return direct.map((item) => ({ task: item, depth: 0 }));
+    if (childMode === "tree") return collectExpanded(task.id, byParent, expandTick).slice(0, 60);
+    const owner = childMode === "breadcrumb" ? (tasks.find((t) => t.id === focusId) ?? task) : task;
+    return (byParent.get(owner.id) ?? []).map((item) => ({ task: item, depth: 0 }));
   })();
 
   const offsetX = pointer.x > container.width - 280 ? -272 : 18;
@@ -198,19 +242,25 @@ export function ChartTooltip({
           </div>
         ) : null}
 
-        {interactive && childRows.length > 0 ? (
+        {interactive && (childRows.length > 0 || chain.length > 1) ? (
           <div className="mt-1 border-t border-[var(--line-soft)] pt-1.5">
-            {childMode === "breadcrumb" ? (
+            {chain.length > 1 || childMode === "breadcrumb" ? (
               <div className="mb-1 flex flex-wrap items-center gap-0.5 text-[9px] text-slate-500">
-                {path.map((part, index) => (
-                  <span
-                    key={path.slice(0, index + 1).join("/")}
-                    className="flex items-center gap-0.5"
-                  >
-                    {index > 0 ? <span className="text-slate-700">›</span> : null}
-                    <span className={index === path.length - 1 ? "text-slate-300" : ""}>
-                      {part}
-                    </span>
+                {(chain.length > 0 ? chain : [task]).map((node) => (
+                  <span key={node.id} className="flex items-center gap-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setFocusId(node.id)}
+                      className={[
+                        "rounded px-0.5 hover:bg-white/10",
+                        node.id === focusId ? "text-slate-200" : "hover:text-slate-300",
+                      ].join(" ")}
+                    >
+                      {node.title}
+                    </button>
+                    {node.id !== (chain.at(-1)?.id ?? task.id) ? (
+                      <span className="text-slate-700">›</span>
+                    ) : null}
                   </span>
                 ))}
               </div>
@@ -225,49 +275,77 @@ export function ChartTooltip({
               </span>
             </div>
             <div className="max-h-[168px] space-y-0.5 overflow-y-auto pr-1">
-              {childRows.map(({ task: child, depth }) => (
-                <div
-                  key={child.id}
-                  className="flex items-center gap-1 rounded px-1 py-0.5 hover:bg-white/[0.05]"
-                  style={{ paddingLeft: depth * 12 + 2 }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => onToggleDone?.(child.id, child.status !== "done")}
-                    className="flex h-4 w-4 shrink-0 items-center justify-center"
-                    title={child.status === "done" ? "取消完成" : "完成"}
+              {childRows.map(({ task: child, depth }) => {
+                const hasKids = (byParent.get(child.id) ?? []).length > 0;
+                const expanded = Boolean(TREE_EXPANDED.get(child.id));
+                return (
+                  <div
+                    key={child.id}
+                    className="flex items-center gap-1 rounded px-1 py-0.5 hover:bg-white/[0.05]"
+                    style={{ paddingLeft: depth * 12 + 2 }}
                   >
-                    {child.status === "done" ? (
-                      <CheckSquare2 size={12} className="text-emerald-400" />
+                    {hasKids ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          childMode === "tree" ? toggleExpand(child.id) : setFocusId(child.id)
+                        }
+                        className="flex h-4 w-3 shrink-0 items-center justify-center text-slate-500 hover:text-slate-200"
+                        title={childMode === "tree" ? "展开 / 收起" : "进入下一层"}
+                        aria-label={childMode === "tree" ? "展开" : "进入下一层"}
+                      >
+                        {childMode === "tree" && expanded ? (
+                          <ChevronDown size={10} />
+                        ) : (
+                          <ChevronRight size={10} />
+                        )}
+                      </button>
                     ) : (
-                      <Square size={12} className="text-slate-600" />
+                      <span className="w-3 shrink-0" />
                     )}
-                  </button>
-                  <span
-                    className={[
-                      "min-w-0 flex-1 truncate text-[10px]",
-                      child.status === "done" ? "text-slate-500 line-through" : "text-slate-300",
-                    ].join(" ")}
-                    title={child.title}
-                  >
-                    {child.emoji ? `${child.emoji} ` : ""}
-                    {child.title}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => onToggleDoing?.(child.id)}
-                    className={[
-                      "flex h-4 w-4 shrink-0 items-center justify-center rounded",
-                      child.status === "doing"
-                        ? "text-amber-300"
-                        : "text-slate-600 hover:text-slate-300",
-                    ].join(" ")}
-                    title={child.status === "doing" ? "暂停处理" : "开始处理"}
-                  >
-                    <Play size={10} />
-                  </button>
-                </div>
-              ))}
+                    <button
+                      type="button"
+                      onClick={() => onToggleDone?.(child.id, child.status !== "done")}
+                      className="flex h-4 w-4 shrink-0 items-center justify-center"
+                      title={child.status === "done" ? "取消完成" : "完成"}
+                    >
+                      {child.status === "done" ? (
+                        <CheckSquare2 size={12} className="text-emerald-400" />
+                      ) : (
+                        <Square size={12} className="text-slate-600" />
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (childMode !== "tree" && hasKids) setFocusId(child.id);
+                      }}
+                      className={[
+                        "min-w-0 flex-1 truncate text-left text-[10px]",
+                        child.status === "done" ? "text-slate-500 line-through" : "text-slate-300",
+                        hasKids && childMode !== "tree" ? "hover:text-emerald-200" : "",
+                      ].join(" ")}
+                      title={child.title}
+                    >
+                      {child.emoji ? `${child.emoji} ` : ""}
+                      {child.title}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onToggleDoing?.(child.id)}
+                      className={[
+                        "flex h-4 w-4 shrink-0 items-center justify-center rounded",
+                        child.status === "doing"
+                          ? "text-amber-300"
+                          : "text-slate-600 hover:text-slate-300",
+                      ].join(" ")}
+                      title={child.status === "doing" ? "暂停处理" : "开始处理"}
+                    >
+                      <Play size={10} />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           </div>
         ) : null}

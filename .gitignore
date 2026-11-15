@@ -30,5 +30,8 @@ vite.config.d.ts
 docs
 _tasks
 .agent-inbox
+__pycache__/
+*.pyc
+
 
 

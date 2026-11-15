@@ -51,21 +51,17 @@ export function TaskTree({ onOpenDetail, onContextMenu, onNewProject }: TaskTree
         <div className="border-b border-[var(--line-soft)] bg-[var(--panel)] px-3 py-2 text-[10px] leading-relaxed text-slate-400">
           <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
             <kbd className="text-emerald-300">Enter</kbd>
-            <span>在下方新建同级（顶层则新建子任务）</span>
-            <kbd className="text-emerald-300">F2 / 双击</kbd>
-            <span>重命名</span>
+            <span>在当前节点之后插入（顶层项目则新建子任务）</span>
             <kbd className="text-emerald-300">Tab / Shift+Tab</kbd>
             <span>缩进 / 反缩进</span>
             <kbd className="text-emerald-300">Alt+↑/↓</kbd>
             <span>同级上下移动</span>
             <kbd className="text-emerald-300">↑/↓</kbd>
             <span>切换行</span>
-            <kbd className="text-emerald-300">←/→</kbd>
+            <kbd className="text-emerald-300">Alt+←/→</kbd>
             <span>折叠 / 展开</span>
-            <kbd className="text-emerald-300">Space</kbd>
-            <span>完成 / 取消完成</span>
-            <kbd className="text-emerald-300">Delete</kbd>
-            <span>删除（含子任务）</span>
+            <kbd className="text-emerald-300">拖动把手</kbd>
+            <span>放到图上 = 承诺；放到行上 = 排序/换父级</span>
           </div>
           <button
             type="button"
@@ -140,7 +136,6 @@ export function TaskTree({ onOpenDetail, onContextMenu, onNewProject }: TaskTree
       <div className="min-h-0 flex-1 overflow-y-auto px-1 py-2">
         <TreeEditor
           scopeId={null}
-          dragMode="chart"
           selectedId={selectedId}
           onSelect={select}
           onOpenDetail={onOpenDetail}
@@ -151,7 +146,7 @@ export function TaskTree({ onOpenDetail, onContextMenu, onNewProject }: TaskTree
       </div>
 
       <div className="border-t border-[var(--line-soft)] px-3 py-2 text-[10px] text-slate-600">
-        点行选中 · Enter 新建 · F2 改名 · 拖到图上承诺
+        点行内文字直接改 · Enter 新建 · 拖把手到图上承诺
       </div>
     </div>
   );

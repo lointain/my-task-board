@@ -33,19 +33,26 @@ await page.getByRole("button", { name: "项目", exact: true }).first().click();
 await page.getByPlaceholder("例如：TaskBoard 开发").fill(project);
 await page.getByRole("button", { name: "创建", exact: true }).click();
 await page.waitForTimeout(700);
-check("新建项目", (await page.locator("body").innerText()).includes(project));
+const treeIdOf = (title) =>
+  page.$$eval(
+    "aside [data-tree-row]",
+    (els, t) => els.find((el) => el.querySelector("input")?.value === t)?.getAttribute("data-tree-row") ?? "",
+    title,
+  );
+check("新建项目", Boolean(await treeIdOf(project)));
 
-// 2. 在右侧树里建子任务（不再有拆解弹窗）
-const projectRow = page.getByText(project, { exact: true }).last();
-await projectRow.click();
-await page.keyboard.press("Enter");
-await page.waitForTimeout(600);
-await page.keyboard.type(child);
+// 2. 在右侧树里建子任务（行内输入框，回车新建）
+const projectId = await treeIdOf(project);
+await page.locator(`[data-tree-row="${projectId}"] input`).click();
 await page.keyboard.press("Enter");
 await page.waitForTimeout(700);
-check("拆解出子任务", (await page.locator("body").innerText()).includes(child));
+await page.keyboard.type(child);
+await page.keyboard.press("Enter");
+await page.waitForTimeout(800);
+const childId = await treeIdOf(child);
+check("拆解出子任务", Boolean(childId));
 
-// 3. 拖到图上（指针拖拽）
+// 3. 拖把手到图上
 const pointIndex = () =>
   page.$$eval(
     "g.chart-point",
@@ -55,14 +62,14 @@ const pointIndex = () =>
 const pointAt = async () => page.locator("g.chart-point").nth(await pointIndex());
 
 const svg = page.locator("svg[data-chart-svg]");
-const dragRow = page.getByText(child, { exact: true }).last();
-await dragRow.scrollIntoViewIfNeeded();
-const dragRowBox = await dragRow.boundingBox();
+const grip = page.locator(`[data-tree-row="${childId}"] [data-tree-grip]`);
+await grip.scrollIntoViewIfNeeded();
+const dragRowBox = await grip.boundingBox();
 const svgBox = await svg.boundingBox();
 if (!dragRowBox || !svgBox) throw new Error("no drag boxes");
-await page.mouse.move(dragRowBox.x + 70, dragRowBox.y + dragRowBox.height / 2);
+await page.mouse.move(dragRowBox.x + dragRowBox.width / 2, dragRowBox.y + dragRowBox.height / 2);
 await page.mouse.down();
-await page.mouse.move(dragRowBox.x + 30, dragRowBox.y - 10, { steps: 4 });
+await page.mouse.move(dragRowBox.x + 4, dragRowBox.y + 12, { steps: 4 });
 await page.mouse.move(svgBox.x + svgBox.width * 0.4, svgBox.y + svgBox.height * 0.45, {
   steps: 10,
 });
@@ -114,15 +121,10 @@ await page.waitForTimeout(900);
 check("设置截止日", (await page.locator("body").innerText()).includes("12-31"));
 
 // 7. 完成 → 点消失、树保留
-await page
-  .locator("[data-tree-row]")
-  .filter({ hasText: child })
-  .locator('button[title="完成（级联子任务）"]')
-  .first()
-  .click();
+await page.locator(`[data-tree-row="${childId}"] button`).first().click();
 await page.waitForTimeout(900);
 check("完成后点图消失", (await pointIndex()) === -1);
-check("完成后树保留", (await page.locator("body").innerText()).includes(child));
+check("完成后树保留", (await page.locator(`[data-tree-row="${childId}"] input`).count()) === 1);
 
 // 8. 周统计
 await page.getByRole("button", { name: "周统计", exact: true }).click();

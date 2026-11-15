@@ -11,6 +11,7 @@ import type {
 } from "../data/types";
 import { EMPTY_FILTER } from "../data/types";
 import { boardDateKey, currentBoard } from "../lib/board";
+import { clientToChartPoint } from "../lib/chartGeometry";
 
 interface AppStore {
   data: AppData | null;
@@ -41,6 +42,7 @@ interface AppStore {
   setTags: (taskId: string, tagIds: string[]) => Promise<void>;
   placeTask: (taskId: string, x: number, y: number) => Promise<void>;
   placeTaskOn: (board: Board, x: number, y: number, taskId: string) => Promise<void>;
+  placeTaskAtPointer: (taskId: string, clientX: number, clientY: number) => Promise<void>;
   movePlacement: (taskId: string, x: number, y: number) => Promise<void>;
   removePlacement: (taskId: string) => Promise<void>;
   setMomentum: (input: {
@@ -226,6 +228,25 @@ export const useAppStore = create<AppStore>((set, get) => ({
         scheduledDate: boardDateKey(board),
         x,
         y,
+      });
+      await get().reload();
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : String(error) });
+    }
+  },
+
+  placeTaskAtPointer: async (taskId, clientX, clientY) => {
+    try {
+      const svg = document.querySelector<SVGSVGElement>("[data-chart-svg]");
+      if (!svg) return;
+      const point = clientToChartPoint(svg, clientX, clientY);
+      const { board } = get();
+      await repo.placementUpsert({
+        taskId,
+        board,
+        scheduledDate: boardDateKey(board),
+        x: point.x,
+        y: point.y,
       });
       await get().reload();
     } catch (error) {

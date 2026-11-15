@@ -2,10 +2,9 @@ import {
   CheckSquare2,
   ChevronDown,
   ChevronRight,
+  CornerDownRight,
   GripVertical,
-  Plus,
   Square,
-  Trash2,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Placement, Task } from "../data/types";
@@ -16,22 +15,18 @@ import {
   dueLabel,
   isOverdue,
   placementBoardLabel,
-  shortTitle,
 } from "../lib/board";
-import { beginTaskDrag, justDragged } from "../lib/drag";
+import { hitTest, useDragStore } from "../lib/drag";
 import { matchesTreeFilter } from "../lib/filter";
 import { useAppStore } from "../store/useAppStore";
 
 interface TreeEditorProps {
   /** null = 整片森林；否则只显示该节点为根的子树 */
   scopeId: string | null;
-  /** chart：拖到图 = 承诺；reorder：行内拖动排序/改父级 */
-  dragMode: "chart" | "reorder";
   selectedId: string | null;
   onSelect: (id: string) => void;
   onOpenDetail?: (id: string) => void;
   onContextMenu?: (task: Task, x: number, y: number) => void;
-  compact?: boolean;
   query?: string;
   dueFilter?: "today" | "week" | "overdue" | null;
 }
@@ -46,12 +41,10 @@ interface Row {
 
 export function TreeEditor({
   scopeId,
-  dragMode,
   selectedId,
   onSelect,
   onOpenDetail,
   onContextMenu,
-  compact,
   query = "",
   dueFilter = null,
 }: TreeEditorProps) {
@@ -59,15 +52,19 @@ export function TreeEditor({
   const taskTags = useAppStore((state) => state.taskTags);
   const createTask = useAppStore((state) => state.createTask);
   const updateTask = useAppStore((state) => state.updateTask);
-  const deleteTask = useAppStore((state) => state.deleteTask);
   const completeTask = useAppStore((state) => state.completeTask);
+  const placeTaskOn = useAppStore((state) => state.placeTaskOn);
+  const placeTaskAtPointer = useAppStore((state) => state.placeTaskAtPointer);
+  const setBoard = useAppStore((state) => state.setBoard);
 
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [draft, setDraft] = useState("");
   const [focusId, setFocusId] = useState<string | null>(null);
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [dragId, setDragId] = useState<string | null>(null);
   const [dropHint, setDropHint] = useState<{ id: string; pos: DropPos } | null>(null);
+
+  const treeRef = useRef<HTMLDivElement>(null);
+  const today = dateKey(new Date());
 
   const tasks = data?.tasks ?? [];
   const taskMap = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks]);
@@ -76,7 +73,6 @@ export function TreeEditor({
     () => new Map((data?.placements ?? []).map((p: Placement) => [p.taskId, p])),
     [data?.placements],
   );
-  const today = dateKey(new Date());
 
   const rows = useMemo<Row[]>(() => {
     const filtering = Boolean(query.trim()) || Boolean(dueFilter);
@@ -110,17 +106,8 @@ export function TreeEditor({
     return list;
   }, [children, collapsed, scopeId, taskMap, tasks, query, dueFilter]);
 
-  const containerRef = useRef<HTMLDivElement>(null);
+  // 外部“在树中编辑”：展开祖先、滚动、聚焦
   const treeFocus = useAppStore((state) => state.treeFocus);
-
-  useEffect(() => {
-    if (!focusId || editingId) return;
-    const el = containerRef.current?.querySelector<HTMLElement>(`[data-tree-row="${focusId}"]`);
-    el?.focus();
-    setFocusId(null);
-  }, [focusId, editingId]);
-
-  // 外部请求定位（右键“拆解/在树中编辑”）：展开祖先、滚动、聚焦
   useEffect(() => {
     if (!treeFocus) return;
     const target = treeFocus.id;
@@ -131,18 +118,28 @@ export function TreeEditor({
       parent = taskMap.get(parent)?.parentId ?? null;
     }
     setCollapsed((prev) => {
-      if (ancestors.every((id) => !prev.has(id))) return prev;
       const next = new Set(prev);
       for (const id of ancestors) next.delete(id);
       return next;
     });
     setFocusId(target);
     window.setTimeout(() => {
-      containerRef.current
+      treeRef.current
         ?.querySelector<HTMLElement>(`[data-tree-row="${target}"]`)
         ?.scrollIntoView({ block: "nearest" });
     }, 30);
   }, [treeFocus, taskMap]);
+
+  useEffect(() => {
+    if (!focusId) return;
+    const input = treeRef.current?.querySelector<HTMLInputElement>(
+      `[data-tree-row="${focusId}"] input`,
+    );
+    if (!input) return;
+    input.focus();
+    input.select();
+    setFocusId(null);
+  }, [focusId]);
 
   const toggleCollapse = useCallback((id: string) => {
     setCollapsed((prev) => {
@@ -156,20 +153,19 @@ export function TreeEditor({
   const lastOrderOf = (parentId: string | null) =>
     (children.get(parentId) ?? []).reduce((max, item) => Math.max(max, item.sortOrder), 0);
 
-  const startRename = (task: Task) => {
-    setEditingId(task.id);
-    setDraft(task.title);
+  const focusRowAt = (index: number) => {
+    const target = rows[Math.max(0, Math.min(rows.length - 1, index))];
+    if (target) setFocusId(target.task.id);
   };
 
-  const commitRename = async (task: Task) => {
-    const next = draft.trim();
-    setEditingId(null);
-    setFocusId(task.id);
-    if (next && next !== task.title) await updateTask(task.id, { title: next });
+  const commitTitle = async (task: Task) => {
+    const next = (drafts[task.id] ?? task.title).trim();
+    if (!next || next === task.title) return;
+    await updateTask(task.id, { title: next });
   };
 
+  /** 回车：插入到当前节点之后；顶层节点（项目）新建子任务 */
   const addAfter = async (task: Task) => {
-    // 顶层节点（项目）没有视图内的同级：回车 = 新建子任务；子节点则插入到它后面
     const isTopLevel = !task.parentId;
     const parentId = isTopLevel ? task.id : task.parentId;
     const created = await createTask({
@@ -185,26 +181,12 @@ export function TreeEditor({
           return next;
         });
       }
-      setEditingId(created.id);
-      setDraft("新任务");
-    }
-  };
-
-  const addChild = async (task: Task) => {
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      next.delete(task.id);
-      return next;
-    });
-    const created = await createTask({ title: "新任务", parentId: task.id });
-    if (created) {
-      setEditingId(created.id);
-      setDraft("新任务");
+      setFocusId(created.id);
     }
   };
 
   const indent = async (task: Task) => {
-    if (scopeId && task.id === scopeId) return;
+    if (!task.parentId && scopeId === null) return;
     const siblings = children.get(task.parentId) ?? [];
     const index = siblings.findIndex((item) => item.id === task.id);
     const previous = siblings[index - 1];
@@ -255,7 +237,7 @@ export function TreeEditor({
     return false;
   };
 
-  const applyDrop = async (draggedId: string, hint: { id: string; pos: DropPos }) => {
+  const applyReorder = async (draggedId: string, hint: { id: string; pos: DropPos }) => {
     if (draggedId === hint.id || isDescendant(hint.id, draggedId)) return;
     const target = taskMap.get(hint.id);
     if (!target) return;
@@ -288,128 +270,139 @@ export function TreeEditor({
     await updateTask(draggedId, { parentId: parentId ?? "", sortOrder });
   };
 
-  const beginReorder = (task: Task, event: React.PointerEvent) => {
+  /**
+   * 一个把手两种用途：落到图上=上图（或落到日期标签=那天），
+   * 落到树内某一行=排序/换父级。
+   */
+  const beginDrag = (task: Task, event: React.PointerEvent) => {
     if (event.button !== 0) return;
+    event.preventDefault();
+    event.stopPropagation();
+
     const startX = event.clientX;
     const startY = event.clientY;
     let active = false;
-    let hint: { id: string; pos: DropPos } | null = null;
+    let rowHint: { id: string; pos: DropPos } | null = null;
 
     const onMove = (moveEvent: PointerEvent) => {
       if (!active) {
         if (Math.hypot(moveEvent.clientX - startX, moveEvent.clientY - startY) < 4) return;
         active = true;
         setDragId(task.id);
+        useDragStore.getState().start(task.id, task.title, moveEvent.clientX, moveEvent.clientY);
       }
-      const el = document
+
+      const rowEl = document
         .elementFromPoint(moveEvent.clientX, moveEvent.clientY)
         ?.closest("[data-tree-row]");
-      if (!(el instanceof HTMLElement)) {
-        hint = null;
-        setDropHint(null);
+      if (rowEl instanceof HTMLElement) {
+        const targetId = rowEl.dataset.treeRow;
+        if (!targetId || targetId === task.id || isDescendant(targetId, task.id)) {
+          rowHint = null;
+          setDropHint(null);
+        } else {
+          const rect = rowEl.getBoundingClientRect();
+          const ratio = (moveEvent.clientY - rect.top) / Math.max(1, rect.height);
+          const pos: DropPos = ratio < 0.3 ? "before" : ratio > 0.7 ? "after" : "child";
+          rowHint = { id: targetId, pos };
+          setDropHint(rowHint);
+        }
+        useDragStore.getState().move(moveEvent.clientX, moveEvent.clientY, null);
         return;
       }
-      const targetId = el.dataset.treeRow;
-      if (!targetId || targetId === task.id || isDescendant(targetId, task.id)) {
-        hint = null;
-        setDropHint(null);
-        return;
-      }
-      const rect = el.getBoundingClientRect();
-      const ratio = (moveEvent.clientY - rect.top) / Math.max(1, rect.height);
-      const pos: DropPos = ratio < 0.3 ? "before" : ratio > 0.7 ? "after" : "child";
-      hint = { id: targetId, pos };
-      setDropHint(hint);
+
+      rowHint = null;
+      setDropHint(null);
+      useDragStore
+        .getState()
+        .move(moveEvent.clientX, moveEvent.clientY, hitTest(moveEvent.clientX, moveEvent.clientY));
     };
 
-    const finish = (commit: boolean) => {
+    const finish = (commit: boolean, clientX: number, clientY: number) => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onCancel);
-      const finalHint = hint;
+      const hint = rowHint;
       const wasActive = active;
-      hint = null;
       active = false;
       setDragId(null);
       setDropHint(null);
-      if (commit && wasActive && finalHint) void applyDrop(task.id, finalHint);
+      useDragStore.getState().end();
+      if (!commit || !wasActive) return;
+
+      if (hint) {
+        void applyReorder(task.id, hint);
+        return;
+      }
+
+      const el = document.elementFromPoint(clientX, clientY);
+      const boardEl = el?.closest("[data-drop-board]");
+      if (boardEl instanceof HTMLElement && boardEl.dataset.dropBoard) {
+        const board = boardEl.dataset.dropBoard as Parameters<typeof placeTaskOn>[0];
+        void placeTaskOn(board, 50, 50, task.id);
+        setBoard(board);
+        return;
+      }
+      if (el?.closest("[data-drop-chart]")) {
+        void placeTaskAtPointer(task.id, clientX, clientY);
+      }
     };
 
-    const onUp = () => finish(true);
-    const onCancel = () => finish(false);
+    const onUp = (upEvent: PointerEvent) => finish(true, upEvent.clientX, upEvent.clientY);
+    const onCancel = (cancelEvent: PointerEvent) =>
+      finish(false, cancelEvent.clientX, cancelEvent.clientY);
 
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
     window.addEventListener("pointercancel", onCancel);
   };
 
-  const focusIndex = (index: number) => {
-    const target = rows[Math.max(0, Math.min(rows.length - 1, index))];
-    if (target) setFocusId(target.task.id);
-  };
-
-  const onKeyDown = async (event: React.KeyboardEvent<HTMLElement>, task: Task) => {
+  const onKeyDown = async (event: React.KeyboardEvent<HTMLInputElement>, task: Task) => {
     const index = rows.findIndex((row) => row.task.id === task.id);
     const hasChildren = (children.get(task.id) ?? []).length > 0;
-    const isScopeRoot = Boolean(scopeId) && task.id === scopeId;
-
-    if (event.target instanceof HTMLInputElement) return;
 
     if (event.key === "Enter") {
       event.preventDefault();
+      await commitTitle(task);
       await addAfter(task);
-      return;
-    }
-    if (event.key === "F2") {
-      event.preventDefault();
-      startRename(task);
       return;
     }
     if (event.key === "Tab") {
       event.preventDefault();
+      await commitTitle(task);
       if (event.shiftKey) await outdent(task);
       else await indent(task);
       return;
     }
-    if (event.altKey && (event.key === "ArrowUp" || event.key === "ArrowDown")) {
+    if (event.altKey && event.key === "ArrowUp") {
       event.preventDefault();
-      await move(task, event.key === "ArrowUp" ? -1 : 1);
+      await commitTitle(task);
+      await move(task, -1);
+      return;
+    }
+    if (event.altKey && event.key === "ArrowDown") {
+      event.preventDefault();
+      await commitTitle(task);
+      await move(task, 1);
+      return;
+    }
+    if (event.altKey && (event.key === "ArrowLeft" || event.key === "ArrowRight")) {
+      if (!hasChildren) return;
+      event.preventDefault();
+      if (event.key === "ArrowRight" && collapsed.has(task.id)) toggleCollapse(task.id);
+      if (event.key === "ArrowLeft" && !collapsed.has(task.id)) toggleCollapse(task.id);
       return;
     }
     if (event.key === "ArrowUp") {
       event.preventDefault();
-      focusIndex(index - 1);
+      await commitTitle(task);
+      focusRowAt(index - 1);
       return;
     }
     if (event.key === "ArrowDown") {
       event.preventDefault();
-      focusIndex(index + 1);
-      return;
-    }
-    if (event.key === "ArrowLeft") {
-      event.preventDefault();
-      if (hasChildren && !collapsed.has(task.id)) toggleCollapse(task.id);
-      else if (task.parentId && !(scopeId && task.parentId === scopeId)) setFocusId(task.parentId);
-      return;
-    }
-    if (event.key === "ArrowRight") {
-      event.preventDefault();
-      if (!hasChildren) return;
-      if (collapsed.has(task.id)) toggleCollapse(task.id);
-      else focusIndex(index + 1);
-      return;
-    }
-    if (event.key === " ") {
-      event.preventDefault();
-      await completeTask(task.id, task.status !== "done");
-      return;
-    }
-    if (event.key === "Delete" || event.key === "Backspace") {
-      event.preventDefault();
-      if (isScopeRoot) return;
-      if (window.confirm(`删除「${task.title}」及其子任务？`)) {
-        await deleteTask(task.id);
-      }
+      await commitTitle(task);
+      focusRowAt(index + 1);
     }
   };
 
@@ -432,66 +425,63 @@ export function TreeEditor({
       data?.settings ?? {},
     );
     const hint = dropHint?.id === task.id ? dropHint.pos : null;
-    const editing = editingId === task.id;
 
     return (
       <div
         key={task.id}
         data-tree-row={task.id}
-        tabIndex={0}
         role="treeitem"
+        tabIndex={-1}
         aria-selected={selectedId === task.id}
         aria-expanded={childCount > 0 ? !isCollapsed : undefined}
         className={[
-          "group flex min-h-8 items-center gap-1 rounded-md border border-transparent pr-1 text-xs outline-none",
+          "group flex min-h-8 items-center gap-1 rounded-md border border-transparent pr-1 text-xs",
           selectedId === task.id ? "bg-white/[0.07]" : "hover:bg-white/[0.04]",
-          "focus-visible:ring-1 focus-visible:ring-emerald-400/60",
           dragId === task.id ? "opacity-40" : "",
           hint === "before" ? "border-t-emerald-400" : "",
           hint === "after" ? "border-b-emerald-400" : "",
           hint === "child" ? "bg-emerald-400/10 ring-1 ring-emerald-400/40" : "",
         ].join(" ")}
         style={{ paddingLeft: depth * 14 + 4 }}
-        onPointerDown={(event) => {
-          if (event.button !== 0) return;
-          const target = event.target as HTMLElement;
-          if (target.closest("button") || target.closest("input")) return;
-          if (dragMode === "chart")
-            beginTaskDrag(task.id, task.title, event.clientX, event.clientY);
-          else beginReorder(task, event);
-        }}
-        onClick={() => {
-          if (justDragged()) return;
-          onSelect(task.id);
-        }}
+        onClick={() => onSelect(task.id)}
         onDoubleClick={() => {
-          if (justDragged()) return;
-          if (!onOpenDetail) startRename(task);
-          else onOpenDetail(task.id);
+          if (onOpenDetail) onOpenDetail(task.id);
         }}
         onContextMenu={(event) => {
           event.preventDefault();
           onContextMenu?.(task, event.clientX, event.clientY);
         }}
-        onKeyDown={(event) => void onKeyDown(event, task)}
       >
         <span
           data-tree-grip={task.id}
           className="flex h-5 w-3 shrink-0 cursor-grab items-center justify-center text-slate-600 hover:text-slate-300 active:cursor-grabbing"
-          onPointerDown={(event) => {
-            event.stopPropagation();
-            if (event.button !== 0) return;
-            beginReorder(task, event);
-          }}
-          title="拖动调整顺序/层级"
+          onPointerDown={(event) => beginDrag(task, event)}
+          title="拖动：放到图上=承诺；放到行上=排序/换父级"
         >
-          <GripVertical size={11} className="opacity-0 group-hover:opacity-100" />
+          <GripVertical size={11} className="opacity-40 group-hover:opacity-100" />
         </span>
 
         <button
           type="button"
           tabIndex={-1}
-          className="flex h-5 w-4 items-center justify-center text-slate-600 hover:text-slate-300"
+          className="flex h-4 w-4 shrink-0 items-center justify-center"
+          onClick={(event) => {
+            event.stopPropagation();
+            void completeTask(task.id, !checked);
+          }}
+          title={checked ? "取消完成（含子任务）" : "完成（含子任务）"}
+        >
+          {checked ? (
+            <CheckSquare2 size={14} className="text-emerald-400" />
+          ) : (
+            <Square size={14} className={someDone ? "text-amber-400" : "text-slate-600"} />
+          )}
+        </button>
+
+        <button
+          type="button"
+          tabIndex={-1}
+          className="flex h-5 w-4 shrink-0 items-center justify-center text-slate-600 hover:text-slate-300"
           onClick={(event) => {
             event.stopPropagation();
             if (childCount > 0) toggleCollapse(task.id);
@@ -504,64 +494,35 @@ export function TreeEditor({
             ) : (
               <ChevronDown size={12} />
             )
+          ) : depth > 0 ? (
+            <CornerDownRight size={11} />
           ) : (
             <span className="h-3 w-3" />
           )}
         </button>
 
-        <button
-          type="button"
-          tabIndex={-1}
-          className="flex h-4 w-4 items-center justify-center"
-          onClick={(event) => {
-            event.stopPropagation();
-            void completeTask(task.id, !checked);
-          }}
-          title={checked ? "取消完成" : "完成（级联子任务）"}
-        >
-          {checked ? (
-            <CheckSquare2 size={14} className="text-emerald-400" />
-          ) : (
-            <Square size={14} className={someDone ? "text-amber-400" : "text-slate-600"} />
-          )}
-        </button>
-
         <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
 
-        {editing ? (
-          <input
-            autoFocus
-            defaultValue={draft}
-            onFocus={(event) => event.currentTarget.select()}
-            onChange={(event) => setDraft(event.target.value)}
-            onBlur={() => void commitRename(task)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
-                void commitRename(task);
-              } else if (event.key === "Escape") {
-                event.preventDefault();
-                setEditingId(null);
-              } else if (event.key === "Tab") {
-                event.preventDefault();
-                void commitRename(task);
-              }
-              event.stopPropagation();
-            }}
-            onPointerDown={(event) => event.stopPropagation()}
-            className="min-w-0 flex-1 rounded bg-[var(--panel)] px-1 text-xs text-slate-100 outline-none ring-1 ring-emerald-400/40"
-          />
-        ) : (
-          <span
-            className={[
-              "min-w-0 flex-1 truncate",
-              done ? "text-slate-500 line-through" : "text-slate-300",
-            ].join(" ")}
-            title={task.title}
-          >
-            {shortTitle(task.title, compact ? 18 : 24)}
-          </span>
-        )}
+        <input
+          value={drafts[task.id] ?? task.title}
+          onChange={(event) => setDrafts((prev) => ({ ...prev, [task.id]: event.target.value }))}
+          onBlur={() => {
+            void commitTitle(task);
+            setDrafts((prev) => {
+              const copy = { ...prev };
+              delete copy[task.id];
+              return copy;
+            });
+          }}
+          onKeyDown={(event) => void onKeyDown(event, task)}
+          onFocus={() => onSelect(task.id)}
+          onPointerDown={(event) => event.stopPropagation()}
+          spellCheck={false}
+          className={[
+            "min-w-0 flex-1 truncate rounded bg-transparent px-0.5 text-xs outline-none focus:bg-[var(--panel)] focus:ring-1 focus:ring-emerald-400/40",
+            done ? "text-slate-500 line-through" : "text-slate-300",
+          ].join(" ")}
+        />
 
         {placement ? (
           <span className="shrink-0 rounded border border-emerald-400/20 bg-emerald-400/10 px-1 text-[9px] text-emerald-300">
@@ -607,31 +568,6 @@ export function TreeEditor({
             {kids.filter((kid) => kid.status === "done").length}/{childCount}
           </span>
         ) : null}
-
-        <button
-          type="button"
-          tabIndex={-1}
-          className="hidden h-5 w-5 items-center justify-center rounded text-slate-500 hover:bg-white/10 hover:text-slate-200 group-hover:flex"
-          onClick={(event) => {
-            event.stopPropagation();
-            void addChild(task);
-          }}
-          title="新建子任务"
-        >
-          <Plus size={12} />
-        </button>
-        <button
-          type="button"
-          tabIndex={-1}
-          className="hidden h-5 w-5 items-center justify-center rounded text-red-300/70 hover:bg-red-400/10 hover:text-red-300 group-hover:flex"
-          onClick={(event) => {
-            event.stopPropagation();
-            if (window.confirm(`删除「${task.title}」及其子任务？`)) void deleteTask(task.id);
-          }}
-          title="删除"
-        >
-          <Trash2 size={12} />
-        </button>
       </div>
     );
   };
@@ -647,7 +583,7 @@ export function TreeEditor({
   }
 
   return (
-    <div ref={containerRef} role="tree" className="space-y-0.5">
+    <div ref={treeRef} role="tree" className="space-y-0.5">
       {rows.map(({ task, depth, childCount }) => renderRow(task, depth, childCount))}
     </div>
   );

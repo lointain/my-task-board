@@ -195,6 +195,39 @@ const axis = await page.evaluate(() => {
 });
 check("Q1 在左侧", axis.anchor === "start" && axis.q1x < 40, JSON.stringify(axis));
 
+// --- 完成 → 取消完成：点按原坐标回到图上 ---
+const placedTransform = async () =>
+  page.$$eval(
+    "g.chart-point",
+    (els, n) => els.find((e) => (e.getAttribute("aria-label") ?? "").startsWith(n))?.getAttribute("transform") ?? null,
+    childAName,
+  );
+const beforeComplete = await placedTransform();
+await page.locator(`[data-tree-row="${childAId}"] button`).first().click();
+await page.waitForTimeout(1000);
+check("完成后点上隐藏", (await placedTransform()) === null);
+await page.locator(`[data-tree-row="${childAId}"] button`).first().click();
+await page.waitForTimeout(1200);
+check(
+  "取消完成按原坐标回到图上",
+  (await placedTransform()) === beforeComplete,
+  `${beforeComplete} vs ${await placedTransform()}`,
+);
+
+// --- 输入框清空后按退格 = 删除该行 ---
+const childDId = await treeIdOf(childCName);
+const delInput = page.locator(`[data-tree-row="${childDId}"] input`);
+await delInput.click();
+await page.keyboard.press("Control+A");
+await page.keyboard.press("Backspace");
+await page.waitForTimeout(200);
+await page.keyboard.press("Backspace");
+await page.waitForTimeout(900);
+check(
+  "输入框清空后按退格删除该行",
+  (await page.locator(`[data-tree-row="${childDId}"]`).count()) === 0,
+);
+
 // --- 悬浮 tooltip 有详情 ---
 const firstPoint = page.locator("g.chart-point").first();
 const firstCircle = await firstPoint.locator("circle").last().boundingBox();

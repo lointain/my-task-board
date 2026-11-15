@@ -764,7 +764,8 @@ fn task_update(state: State<'_, AppState>, id: String, patch: TaskPatch) -> Resu
         .map(|t| t.trim().to_string())
         .filter(|t| !t.is_empty())
         .unwrap_or(current.title);
-    let status = patch.status.unwrap_or(current.status);
+    let previous_status = current.status.clone();
+    let status = patch.status.unwrap_or_else(|| current.status.clone());
     if !is_valid_status(&status) {
         return Err("非法状态".into());
     }
@@ -822,13 +823,16 @@ fn task_update(state: State<'_, AppState>, id: String, patch: TaskPatch) -> Resu
         ],
     )
     .map_err(|e| e.to_string())?;
-    if status == "done" {
+    // 从“完成”改回未完成：重置动量计时，保留原坐标
+    if previous_status == "done" && status != "done" {
         conn.execute(
-            "DELETE FROM chart_placements WHERE task_id = ?1",
-            params![id],
+            "UPDATE chart_placements SET momentum_updated_at = ?2 WHERE task_id = ?1",
+            params![id, now],
         )
         .map_err(|e| e.to_string())?;
     }
+    // 完成时保留 placement：图上只是不显示（done 会被过滤），
+    // 取消完成时能按原坐标重新出现
     load_tasks(&conn)?
         .into_iter()
         .find(|t| t.id == id)
@@ -853,15 +857,18 @@ fn task_complete(state: State<'_, AppState>, id: String, done: bool) -> Result<(
         params![id, status, completed, now],
     )
     .map_err(|e| e.to_string())?;
-    if done {
+    // 不删除 placement：取消完成时按原坐标回到图上
+    if !done {
+        // 完成期间不动量，恢复时从“现在”重新计时，避免一口气跳很远
         conn.execute(
             "WITH RECURSIVE sub(id) AS (
                 SELECT id FROM tasks WHERE id = ?1
                 UNION ALL
                 SELECT t.id FROM tasks t JOIN sub s ON t.parent_id = s.id
              )
-             DELETE FROM chart_placements WHERE task_id IN (SELECT id FROM sub)",
-            params![id],
+             UPDATE chart_placements SET momentum_updated_at = ?2
+             WHERE task_id IN (SELECT id FROM sub)",
+            params![id, now],
         )
         .map_err(|e| e.to_string())?;
     }

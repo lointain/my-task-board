@@ -53,6 +53,7 @@ export function TreeEditor({
   const createTask = useAppStore((state) => state.createTask);
   const updateTask = useAppStore((state) => state.updateTask);
   const completeTask = useAppStore((state) => state.completeTask);
+  const deleteTask = useAppStore((state) => state.deleteTask);
   const placeTaskOn = useAppStore((state) => state.placeTaskOn);
   const placeTaskAtPointer = useAppStore((state) => state.placeTaskAtPointer);
   const setBoard = useAppStore((state) => state.setBoard);
@@ -360,6 +361,19 @@ export function TreeEditor({
   const onKeyDown = async (event: React.KeyboardEvent<HTMLInputElement>, task: Task) => {
     const index = rows.findIndex((row) => row.task.id === task.id);
     const hasChildren = (children.get(task.id) ?? []).length > 0;
+
+    // 输入框已经清空时再按退格 = 删除这一条
+    if (event.key === "Backspace" && (drafts[task.id] ?? task.title) === "") {
+      event.preventDefault();
+      if (hasChildren) {
+        const kids = (children.get(task.id) ?? []).length;
+        if (!window.confirm(`删除「${task.title}」及其 ${kids} 个子任务？`)) return;
+      }
+      const prevId = rows[index - 1]?.task.id ?? null;
+      await deleteTask(task.id);
+      if (prevId) setFocusId(prevId);
+      return;
+    }
 
     if (event.key === "Enter") {
       event.preventDefault();

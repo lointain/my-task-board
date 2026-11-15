@@ -343,6 +343,7 @@ fn init_db(path: &Path) -> Result<Connection, Box<dyn std::error::Error>> {
         ("momentum_default", "0.25"),
         ("show_momentum", "true"),
         ("momentum_horizon_days", "7"),
+        ("child_view_mode", "direct"),
         ("color_by", "project"),
         ("theme", "dark"),
         ("week_starts_on", "mon"),

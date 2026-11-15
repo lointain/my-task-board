@@ -25,7 +25,7 @@ function StatsList({
       <div className="flex items-center justify-between border-b border-[var(--line-soft)] px-3 py-2">
         <span className="flex items-center gap-1.5 text-[11px] font-medium text-[var(--t2)]">
           {tone === "done" ? (
-            <CheckCircle2 size={13} className="text-emerald-400" />
+            <CheckCircle2 size={13} className="text-accent-400" />
           ) : (
             <Clock3 size={13} className="text-red-300" />
           )}
@@ -47,7 +47,7 @@ function StatsList({
               <span
                 className={[
                   "h-1.5 w-1.5 shrink-0 rounded-full",
-                  tone === "done" ? "bg-emerald-400" : "bg-red-400",
+                  tone === "done" ? "bg-accent-400" : "bg-red-400",
                 ].join(" ")}
               />
               <span className="min-w-0 flex-1 truncate text-[11px] text-[var(--t2)]">

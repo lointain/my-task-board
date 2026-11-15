@@ -46,7 +46,7 @@ export function ProjectModal({ open, onClose }: ProjectModalProps) {
               void createProject(title, color, emoji.trim() || undefined);
               onClose();
             }}
-            className="h-8 rounded-lg bg-emerald-400 px-3 text-[11px] font-medium text-emerald-950 hover:bg-emerald-300"
+            className="h-8 rounded-lg bg-accent-400 px-3 text-[11px] font-medium text-accent-950 hover:bg-accent-300"
           >
             创建
           </button>
@@ -67,7 +67,7 @@ export function ProjectModal({ open, onClose }: ProjectModalProps) {
               }
             }}
             placeholder="例如：TaskBoard 开发"
-            className="h-9 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-2)] px-3 text-sm text-[var(--t1)] outline-none focus:border-emerald-400/40"
+            className="h-9 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-2)] px-3 text-sm text-[var(--t1)] outline-none focus:border-accent-400/40"
           />
         </label>
         <label className="block">
@@ -77,7 +77,7 @@ export function ProjectModal({ open, onClose }: ProjectModalProps) {
             onChange={(event) => setEmoji(event.target.value)}
             placeholder="🚀 或任意 emoji"
             maxLength={4}
-            className="h-9 w-24 rounded-lg border border-[var(--line)] bg-[var(--panel-2)] px-3 text-center text-sm text-[var(--t1)] outline-none focus:border-emerald-400/40"
+            className="h-9 w-24 rounded-lg border border-[var(--line)] bg-[var(--panel-2)] px-3 text-center text-sm text-[var(--t1)] outline-none focus:border-accent-400/40"
           />
         </label>
         <div>

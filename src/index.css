@@ -1,4 +1,11 @@
-@import "tailwindcss";
+﻿@import "tailwindcss";
+
+@theme inline {
+  --color-accent-200: var(--a200);
+  --color-accent-300: var(--a300);
+  --color-accent-400: var(--a400);
+  --color-accent-950: var(--a950);
+}
 
 :root,
 [data-theme="dark"] {
@@ -16,6 +23,12 @@
   --q3: #fbbf24;
   --q4: #64748b;
 
+  /* 主色（蓝） */
+  --a950: #ffffff;
+  --a400: #3b82f6;
+  --a300: #60a5fa;
+  --a200: #93c5fd;
+
   /* 文本层级 */
   --t1: #e6edf3;
   --t2: #c2cbd6;
@@ -30,8 +43,12 @@
 
   /* 图表 */
   --chart-bg: #0e141b;
+  --chart-surface: #111820;
   --chart-border: #1f2a37;
-  --chart-label: #9aa7b7;
+  --chart-label: #8d9aab;
+  --chart-grid: rgb(255 255 255 / 5%);
+  --chart-axis: rgb(255 255 255 / 12%);
+  --chart-split: rgb(255 255 255 / 14%);
   --chart-dot-stroke: #0b0f14;
   --chart-momentum: #94a3b8;
   --chart-handle: #e2e8f0;
@@ -47,18 +64,26 @@
 
 [data-theme="light"] {
   color-scheme: light;
-  --bg: #f4f6f9;
+  --bg: #f2f5f9;
   --panel: #ffffff;
-  --panel-2: #f1f4f8;
-  --line: #d7dee8;
-  --line-soft: #e6ebf2;
+  --panel-2: #eef2f7;
+  --line: #d5dee9;
+  --line-soft: #e4eaf2;
   --text: #16202b;
   --muted: #5d6877;
-  --accent: #0f9d76;
-  --q1: #dc5f5f;
-  --q2: #0f9d76;
-  --q3: #c98a12;
-  --q4: #7b8798;
+  --accent: #2563eb;
+
+  /* 主色（蓝） */
+  --a950: #ffffff;
+  --a400: #2563eb;
+  --a300: #1d4ed8;
+  --a200: #1e40af;
+
+  /* 象限：浅色下压暗、去饱和，避免刺眼 */
+  --q1: #c0574f;
+  --q2: #2a7a63;
+  --q3: #a97618;
+  --q4: #7d8a9c;
 
   --t1: #16202b;
   --t2: #33404f;
@@ -70,16 +95,21 @@
   --hover-strong: rgb(15 23 42 / 9%);
   --chip: rgb(15 23 42 / 4%);
 
-  --chart-bg: #ffffff;
-  --chart-border: #d7dee8;
-  --chart-label: #45505f;
-  --chart-dot-stroke: #ffffff;
-  --chart-momentum: #7b8798;
-  --chart-handle: #16202b;
-  --chart-ring-track: rgb(15 23 42 / 12%);
+  /* 图表：柔和的纸面，而不是纯白 */
+  --chart-bg: #f7fafd;
+  --chart-surface: #e9eff7;
+  --chart-border: #dde5ef;
+  --chart-label: #667486;
+  --chart-grid: rgb(15 23 42 / 6%);
+  --chart-axis: rgb(15 23 42 / 14%);
+  --chart-split: rgb(15 23 42 / 16%);
+  --chart-dot-stroke: rgb(15 23 42 / 18%);
+  --chart-momentum: #94a3b8;
+  --chart-handle: #1e293b;
+  --chart-ring-track: rgb(15 23 42 / 10%);
   --scroll-thumb: #c3ccd8;
-  --dot-grid: rgb(15 23 42 / 7%);
-  --code-bg: #f1f4f8;
+  --dot-grid: rgb(15 23 42 / 5%);
+  --code-bg: #eef2f7;
   --tip-bg: rgb(255 255 255 / 97%);
 }
 
@@ -274,16 +304,6 @@ body {
 /* 浅色主题下的强调色：深底上用的亮色在白底会糊，这里压暗一档        */
 /* ------------------------------------------------------------------ */
 
-[data-theme="light"] .text-emerald-200,
-[data-theme="light"] .text-emerald-300,
-[data-theme="light"] .text-emerald-400 {
-  color: #0b7a5b;
-}
-
-[data-theme="light"] .text-emerald-950 {
-  color: #04281d;
-}
-
 [data-theme="light"] .text-amber-200,
 [data-theme="light"] .text-amber-300,
 [data-theme="light"] .text-amber-400 {
@@ -300,14 +320,6 @@ body {
   color: #1c6fa8;
 }
 
-[data-theme="light"] .bg-emerald-400 {
-  background-color: #10a37c;
-}
-
-[data-theme="light"] .hover\:bg-emerald-300:hover {
-  background-color: #0d8f6d;
-}
-
 /* ------------------------------------------------------------------ */
 /* 拖拽：树节点 → 图 / 日板                                             */
 /* ------------------------------------------------------------------ */
@@ -320,5 +332,8 @@ body.task-dragging {
 body.task-dragging .chart-point {
   cursor: grabbing;
 }
+
+
+
 
 

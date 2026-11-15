@@ -1,4 +1,4 @@
-import {
+﻿import {
   AlertTriangle,
   CalendarClock,
   CheckSquare2,
@@ -313,7 +313,7 @@ export function ChartTooltip({
                       title={child.status === "done" ? "取消完成" : "完成"}
                     >
                       {child.status === "done" ? (
-                        <CheckSquare2 size={12} className="text-emerald-400" />
+                        <CheckSquare2 size={12} className="text-accent-400" />
                       ) : (
                         <Square size={12} className="text-[var(--t4)]" />
                       )}
@@ -328,7 +328,7 @@ export function ChartTooltip({
                         child.status === "done"
                           ? "text-[var(--t3)] line-through"
                           : "text-[var(--t2)]",
-                        hasKids && childMode !== "tree" ? "hover:text-emerald-200" : "",
+                        hasKids && childMode !== "tree" ? "hover:text-accent-200" : "",
                       ].join(" ")}
                       title={child.title}
                     >

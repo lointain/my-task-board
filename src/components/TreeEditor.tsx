@@ -458,9 +458,9 @@ export function TreeEditor({
           "group flex min-h-8 items-center gap-1 rounded-md border border-transparent pr-1 text-xs",
           selectedId === task.id ? "bg-[var(--hover-strong)]" : "hover:bg-[var(--hover)]",
           dragId === task.id ? "opacity-40" : "",
-          hint === "before" ? "border-t-emerald-400" : "",
-          hint === "after" ? "border-b-emerald-400" : "",
-          hint === "child" ? "bg-emerald-400/10 ring-1 ring-emerald-400/40" : "",
+          hint === "before" ? "border-t-accent-400" : "",
+          hint === "after" ? "border-b-accent-400" : "",
+          hint === "child" ? "bg-accent-400/10 ring-1 ring-accent-400/40" : "",
         ].join(" ")}
         style={{ paddingLeft: depth * 14 + 4 }}
         onClick={() => onSelect(task.id)}
@@ -495,7 +495,7 @@ export function TreeEditor({
           title={checked ? "取消完成（含子任务）" : "完成（含子任务）"}
         >
           {checked ? (
-            <CheckSquare2 size={14} className="text-emerald-400" />
+            <CheckSquare2 size={14} className="text-accent-400" />
           ) : (
             <Square size={14} className={someDone ? "text-amber-400" : "text-[var(--t4)]"} />
           )}
@@ -600,13 +600,13 @@ export function TreeEditor({
           onPointerDown={(event) => event.stopPropagation()}
           spellCheck={false}
           className={[
-            "min-w-0 flex-1 truncate rounded bg-transparent px-0.5 text-xs outline-none focus:bg-[var(--panel)] focus:ring-1 focus:ring-emerald-400/40",
+            "min-w-0 flex-1 truncate rounded bg-transparent px-0.5 text-xs outline-none focus:bg-[var(--panel)] focus:ring-1 focus:ring-accent-400/40",
             done ? "text-[var(--t3)] line-through" : "text-[var(--t2)]",
           ].join(" ")}
         />
 
         {placement ? (
-          <span className="shrink-0 rounded border border-emerald-400/20 bg-emerald-400/10 px-1 text-[9px] text-emerald-300">
+          <span className="shrink-0 rounded border border-accent-400/20 bg-accent-400/10 px-1 text-[9px] text-accent-300">
             {placementBoardLabel(placement)}
           </span>
         ) : null}

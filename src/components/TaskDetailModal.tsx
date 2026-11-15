@@ -56,7 +56,7 @@ function EditorButton({
       className={[
         "flex h-6 w-6 items-center justify-center rounded-md",
         active
-          ? "bg-emerald-400/10 text-emerald-300"
+          ? "bg-accent-400/10 text-accent-300"
           : "text-[var(--t3)] hover:bg-[var(--hover)] hover:text-[var(--t1)]",
       ].join(" ")}
     >
@@ -116,7 +116,7 @@ function TagPicker({
                     className={[
                       "flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] transition-colors",
                       active
-                        ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200"
+                        ? "border-accent-400/30 bg-accent-400/10 text-accent-200"
                         : "border-[var(--line)] text-[var(--t3)] hover:border-[var(--t4)] hover:text-[var(--t1)]",
                     ].join(" ")}
                   >
@@ -258,7 +258,7 @@ export function TaskDetailModal({ task, onClose }: TaskDetailModalProps) {
             type="button"
             onClick={() => void save()}
             disabled={saving}
-            className="h-8 rounded-lg bg-emerald-400 px-3 text-[11px] font-medium text-emerald-950 hover:bg-emerald-300 disabled:opacity-60"
+            className="h-8 rounded-lg bg-accent-400 px-3 text-[11px] font-medium text-accent-950 hover:bg-accent-300 disabled:opacity-60"
           >
             {saving ? "保存中…" : "保存"}
           </button>
@@ -277,8 +277,8 @@ export function TaskDetailModal({ task, onClose }: TaskDetailModalProps) {
             className={[
               "mt-1 flex h-5 w-5 shrink-0 items-center justify-center rounded border",
               status === "done"
-                ? "border-emerald-400 bg-emerald-400 text-emerald-950"
-                : "border-[var(--line)] text-transparent hover:border-emerald-400",
+                ? "border-accent-400 bg-accent-400 text-accent-950"
+                : "border-[var(--line)] text-transparent hover:border-accent-400",
             ].join(" ")}
             title="完成 / 取消完成"
           >
@@ -289,7 +289,7 @@ export function TaskDetailModal({ task, onClose }: TaskDetailModalProps) {
               <button
                 type="button"
                 onClick={() => setEmojiOpen(true)}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-[var(--line)] text-base hover:border-emerald-400/40"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-[var(--line)] text-base hover:border-accent-400/40"
                 title="设置图标"
                 aria-label="设置图标"
               >

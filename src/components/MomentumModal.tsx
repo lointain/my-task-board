@@ -54,7 +54,7 @@ export function MomentumModal({ task, placement, onClose }: MomentumModalProps) 
               });
               onClose();
             }}
-            className="h-8 rounded-lg bg-emerald-400 px-3 text-[11px] font-medium text-emerald-950 hover:bg-emerald-300"
+            className="h-8 rounded-lg bg-accent-400 px-3 text-[11px] font-medium text-accent-950 hover:bg-accent-300"
           >
             保存
           </button>
@@ -68,7 +68,7 @@ export function MomentumModal({ task, placement, onClose }: MomentumModalProps) 
             type="date"
             value={dueAt}
             onChange={(event) => setDueAt(event.target.value)}
-            className="h-9 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-2)] px-3 text-sm text-[var(--t1)] outline-none focus:border-emerald-400/40"
+            className="h-9 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-2)] px-3 text-sm text-[var(--t1)] outline-none focus:border-accent-400/40"
           />
           <div className="mt-1.5 flex flex-wrap items-center gap-1">
             {[
@@ -86,7 +86,7 @@ export function MomentumModal({ task, placement, onClose }: MomentumModalProps) 
                   const key = `${date.getFullYear()}-${`${date.getMonth() + 1}`.padStart(2, "0")}-${`${date.getDate()}`.padStart(2, "0")}`;
                   setDueAt(key);
                 }}
-                className="h-6 rounded-md border border-[var(--line)] px-2 text-[10px] text-[var(--t2)] hover:border-emerald-400/40 hover:text-emerald-200"
+                className="h-6 rounded-md border border-[var(--line)] px-2 text-[10px] text-[var(--t2)] hover:border-accent-400/40 hover:text-accent-200"
               >
                 {preset.label}
               </button>

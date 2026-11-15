@@ -184,7 +184,7 @@ export default function App() {
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center bg-[var(--bg)] text-sm text-[var(--t3)]">
-        <Sparkles size={16} className="mr-2 animate-pulse text-emerald-300" />
+        <Sparkles size={16} className="mr-2 animate-pulse text-accent-300" />
         正在加载本地数据…
       </div>
     );
@@ -195,7 +195,7 @@ export default function App() {
       <header className="flex h-14 shrink-0 items-center gap-4 border-b border-[var(--line)] bg-[var(--panel-2)] px-4">
         <div className="flex shrink-0 items-center gap-2.5">
           <div className="grid h-7 w-7 grid-cols-2 gap-[2px]">
-            <span className="rounded-[2px] bg-emerald-400" />
+            <span className="rounded-[2px] bg-accent-400" />
             <span className="rounded-[2px] bg-red-400" />
             <span className="rounded-[2px] bg-slate-500" />
             <span className="rounded-[2px] bg-amber-400" />
@@ -214,7 +214,7 @@ export default function App() {
           <button
             type="button"
             onClick={() => setProjectOpen(true)}
-            className="flex h-8 items-center gap-1.5 rounded-lg bg-emerald-400 px-3 text-[11px] font-medium text-emerald-950 hover:bg-emerald-300"
+            className="flex h-8 items-center gap-1.5 rounded-lg bg-accent-400 px-3 text-[11px] font-medium text-accent-950 hover:bg-accent-300"
           >
             <Plus size={13} /> 项目
           </button>
@@ -265,7 +265,7 @@ export default function App() {
 
           <FilterBar hiddenCount={hiddenCount} />
 
-          <section className="dot-grid relative min-h-0 flex-1 overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--panel)]">
+          <section className="dot-grid relative min-h-0 flex-1 overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--chart-surface)]">
             <QuadrantChart
               board={board}
               placements={data?.placements ?? []}
@@ -326,7 +326,7 @@ export default function App() {
 
       <footer className="flex h-8 shrink-0 items-center gap-4 border-t border-[var(--line)] bg-[var(--panel-2)] px-4 text-[10px] text-[var(--t3)]">
         <span className="flex items-center gap-1.5">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+          <span className="h-1.5 w-1.5 rounded-full bg-accent-400" />
           SQLite · WAL · 本地
         </span>
         <span className="text-[var(--t5)]">|</span>

@@ -32,12 +32,12 @@ export function HelloCard() {
   return (
     <section className="rounded-xl border border-[var(--line)] bg-[var(--panel-2)] p-3.5">
       <div className="mb-3 flex items-center gap-2">
-        <Database size={14} className="text-emerald-300" />
+        <Database size={14} className="text-accent-300" />
         <h3 className="text-xs font-medium tracking-wide text-[var(--t2)]">Rust ↔ SQLite 连通性</h3>
         <span
           className={[
             "ml-auto rounded-full px-2 py-0.5 text-[10px]",
-            inTauri ? "bg-emerald-400/10 text-emerald-300" : "bg-amber-400/10 text-amber-300",
+            inTauri ? "bg-accent-400/10 text-accent-300" : "bg-amber-400/10 text-amber-300",
           ].join(" ")}
         >
           {inTauri ? "Tauri 桌面端" : "浏览器预览"}
@@ -53,7 +53,7 @@ export function HelloCard() {
 
       {state.kind === "ready" && (
         <div className="space-y-2">
-          <div className="flex items-start gap-2 rounded-lg border border-emerald-400/20 bg-emerald-400/5 px-2.5 py-2 text-xs text-emerald-200">
+          <div className="flex items-start gap-2 rounded-lg border border-accent-400/20 bg-accent-400/5 px-2.5 py-2 text-xs text-accent-200">
             <CheckCircle2 size={14} className="mt-0.5 shrink-0" />
             <span>{state.payload.message}</span>
           </div>

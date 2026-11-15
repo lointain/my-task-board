@@ -34,7 +34,7 @@ export function FilterBar({ hiddenCount }: FilterBarProps) {
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <label className="flex h-8 min-w-[180px] flex-1 items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--panel)] px-2.5 text-xs text-[var(--t3)] focus-within:border-emerald-400/40">
+      <label className="flex h-8 min-w-[180px] flex-1 items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--panel)] px-2.5 text-xs text-[var(--t3)] focus-within:border-accent-400/40">
         <Search size={13} />
         <input
           value={filter.text}

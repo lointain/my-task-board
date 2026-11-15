@@ -40,7 +40,7 @@ export function TaskTree({ onOpenDetail, onContextMenu, onNewProject }: TaskTree
           <button
             type="button"
             onClick={onNewProject}
-            className="flex h-7 items-center gap-1 rounded-lg bg-emerald-400 px-2 text-[11px] font-medium text-emerald-950 hover:bg-emerald-300"
+            className="flex h-7 items-center gap-1 rounded-lg bg-accent-400 px-2 text-[11px] font-medium text-accent-950 hover:bg-accent-300"
           >
             <Plus size={12} /> 项目
           </button>
@@ -50,17 +50,17 @@ export function TaskTree({ onOpenDetail, onContextMenu, onNewProject }: TaskTree
       {showHelp ? (
         <div className="border-b border-[var(--line-soft)] bg-[var(--panel)] px-3 py-2 text-[10px] leading-relaxed text-[var(--t3)]">
           <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
-            <kbd className="text-emerald-300">Enter</kbd>
+            <kbd className="text-accent-300">Enter</kbd>
             <span>在当前节点之后插入（顶层项目则新建子任务）</span>
-            <kbd className="text-emerald-300">Tab / Shift+Tab</kbd>
+            <kbd className="text-accent-300">Tab / Shift+Tab</kbd>
             <span>缩进 / 反缩进</span>
-            <kbd className="text-emerald-300">Alt+↑/↓</kbd>
+            <kbd className="text-accent-300">Alt+↑/↓</kbd>
             <span>同级上下移动</span>
-            <kbd className="text-emerald-300">↑/↓</kbd>
+            <kbd className="text-accent-300">↑/↓</kbd>
             <span>切换行</span>
-            <kbd className="text-emerald-300">Alt+←/→</kbd>
+            <kbd className="text-accent-300">Alt+←/→</kbd>
             <span>折叠 / 展开</span>
-            <kbd className="text-emerald-300">拖动把手</kbd>
+            <kbd className="text-accent-300">拖动把手</kbd>
             <span>放到图上 = 承诺；放到行上 = 排序/换父级</span>
           </div>
           <button
@@ -122,7 +122,7 @@ export function TaskTree({ onOpenDetail, onContextMenu, onNewProject }: TaskTree
       </div>
 
       <div className="border-b border-[var(--line-soft)] px-3 py-2">
-        <label className="flex h-7 items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--panel)] px-2 text-[11px] text-[var(--t3)] focus-within:border-emerald-400/40">
+        <label className="flex h-7 items-center gap-2 rounded-lg border border-[var(--line)] bg-[var(--panel)] px-2 text-[11px] text-[var(--t3)] focus-within:border-accent-400/40">
           <Search size={12} />
           <input
             value={query}

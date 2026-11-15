@@ -83,7 +83,7 @@ export function EmojiPickerModal({ open, value, onPick, onClose }: EmojiPickerMo
               }
             }}
             placeholder="也可以直接粘贴一个 emoji 后回车"
-            className="h-8 min-w-0 flex-1 rounded-lg border border-[var(--line)] bg-[var(--panel-2)] px-2.5 text-[12px] text-[var(--t1)] outline-none focus:border-emerald-400/40"
+            className="h-8 min-w-0 flex-1 rounded-lg border border-[var(--line)] bg-[var(--panel-2)] px-2.5 text-[12px] text-[var(--t1)] outline-none focus:border-accent-400/40"
           />
           <button
             type="button"
@@ -93,7 +93,7 @@ export function EmojiPickerModal({ open, value, onPick, onClose }: EmojiPickerMo
               setDraft("");
               setQuery("");
             }}
-            className="h-8 rounded-lg bg-emerald-400 px-3 text-[11px] font-medium text-emerald-950 disabled:opacity-40"
+            className="h-8 rounded-lg bg-accent-400 px-3 text-[11px] font-medium text-accent-950 disabled:opacity-40"
           >
             使用
           </button>
@@ -124,7 +124,7 @@ export function EmojiPickerModal({ open, value, onPick, onClose }: EmojiPickerMo
                     }}
                     className={[
                       "flex h-8 items-center justify-center rounded-md text-lg hover:bg-[var(--hover-strong)]",
-                      emoji === value ? "bg-emerald-400/15 ring-1 ring-emerald-400/50" : "",
+                      emoji === value ? "bg-accent-400/15 ring-1 ring-accent-400/50" : "",
                     ].join(" ")}
                     title={emoji}
                   >

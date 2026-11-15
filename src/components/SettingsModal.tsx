@@ -87,7 +87,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                       {group.mode === "single" ? "单选" : "多选"}
                     </span>
                     {group.isFree ? (
-                      <span className="rounded border border-emerald-400/20 px-1 text-[9px] text-emerald-300">
+                      <span className="rounded border border-accent-400/20 px-1 text-[9px] text-accent-300">
                         自由
                       </span>
                     ) : null}
@@ -141,7 +141,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                         if (event.key === "Enter") void addTag(group);
                       }}
                       placeholder="新增标签…"
-                      className="h-7 min-w-0 flex-1 rounded-md border border-[var(--line)] bg-[var(--panel)] px-2 text-[10px] text-[var(--t1)] outline-none focus:border-emerald-400/40"
+                      className="h-7 min-w-0 flex-1 rounded-md border border-[var(--line)] bg-[var(--panel)] px-2 text-[10px] text-[var(--t1)] outline-none focus:border-accent-400/40"
                     />
                     <button
                       type="button"
@@ -162,7 +162,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                 value={groupName}
                 onChange={(event) => setGroupName(event.target.value)}
                 placeholder="新标签组名称"
-                className="h-8 min-w-[160px] flex-1 rounded-md border border-[var(--line)] bg-[var(--panel)] px-2 text-[11px] text-[var(--t1)] outline-none focus:border-emerald-400/40"
+                className="h-8 min-w-[160px] flex-1 rounded-md border border-[var(--line)] bg-[var(--panel)] px-2 text-[11px] text-[var(--t1)] outline-none focus:border-accent-400/40"
               />
               <select
                 value={groupMode}
@@ -192,7 +192,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                   setGroupName("");
                   setGroupFree(false);
                 }}
-                className="h-8 rounded-md bg-emerald-400 px-3 text-[11px] font-medium text-emerald-950 hover:bg-emerald-300"
+                className="h-8 rounded-md bg-accent-400 px-3 text-[11px] font-medium text-accent-950 hover:bg-accent-300"
               >
                 新建组
               </button>
@@ -309,7 +309,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
               立即备份
             </button>
             {backupPath ? (
-              <span className="break-all text-[10px] text-emerald-300">{backupPath}</span>
+              <span className="break-all text-[10px] text-accent-300">{backupPath}</span>
             ) : null}
           </div>
         </section>

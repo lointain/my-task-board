@@ -230,7 +230,7 @@ export function QuadrantChart({
       .attr("width", (d) => Math.abs(x(d.x1) - x(d.x0)))
       .attr("height", (d) => y(d.y0) - y(d.y1))
       .attr("fill", (d) => cssColor(`--${d.id}`, d.color))
-      .attr("opacity", 0.045);
+      .attr("opacity", 0.05);
 
     const ticks = [0, 25, 50, 75, 100];
     root
@@ -242,7 +242,9 @@ export function QuadrantChart({
       .attr("x2", (d) => x(d))
       .attr("y1", 0)
       .attr("y2", INNER_H)
-      .attr("stroke", (d) => (d === 50 ? "#334155" : "#17212c"))
+      .attr("stroke", (d) =>
+        d === 50 ? cssColor("--chart-split", "#334155") : cssColor("--chart-grid", "#17212c"),
+      )
       .attr("stroke-dasharray", (d) => (d === 50 ? "0" : "3 5"));
 
     root
@@ -254,7 +256,9 @@ export function QuadrantChart({
       .attr("x2", INNER_W)
       .attr("y1", (d) => y(d))
       .attr("y2", (d) => y(d))
-      .attr("stroke", (d) => (d === 50 ? "#334155" : "#17212c"))
+      .attr("stroke", (d) =>
+        d === 50 ? cssColor("--chart-split", "#334155") : cssColor("--chart-grid", "#17212c"),
+      )
       .attr("stroke-dasharray", (d) => (d === 50 ? "0" : "3 5"));
 
     for (const q of QUADRANT_STYLE) {
@@ -819,8 +823,8 @@ export function QuadrantChart({
       data-drop-chart="true"
       className={[
         "relative h-full w-full rounded-2xl transition-shadow",
-        dragging && overChart ? "ring-2 ring-emerald-400/60" : "",
-        dragging && !overChart ? "ring-1 ring-emerald-400/20" : "",
+        dragging && overChart ? "ring-2 ring-accent-400/60" : "",
+        dragging && !overChart ? "ring-1 ring-accent-400/20" : "",
       ].join(" ")}
     >
       <svg
@@ -859,7 +863,7 @@ export function QuadrantChart({
       ) : null}
       {dragging ? (
         <div className="pointer-events-none absolute inset-0 flex items-start justify-center pt-3">
-          <span className="rounded-full border border-emerald-400/30 bg-[var(--bg)]/85 px-2.5 py-0.5 text-[10px] text-emerald-200">
+          <span className="rounded-full border border-accent-400/30 bg-[var(--bg)]/85 px-2.5 py-0.5 text-[10px] text-accent-200">
             {overChart ? "松开：按落点放上去" : `拖到${BOARD_LABEL[board]}图上松开`}
           </span>
         </div>

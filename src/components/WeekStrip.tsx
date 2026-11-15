@@ -20,7 +20,7 @@ export function WeekStrip() {
 
   const dropRing = (target: Board) =>
     dragging && over?.kind === "board" && over.board === target
-      ? "ring-2 ring-emerald-400/70 ring-offset-1 ring-offset-[var(--panel-2)]"
+      ? "ring-2 ring-accent-400/70 ring-offset-1 ring-offset-[var(--panel-2)]"
       : "";
 
   return (
@@ -43,7 +43,7 @@ export function WeekStrip() {
             className={[
               "group flex h-9 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-xs transition-colors",
               active
-                ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-200"
+                ? "border-accent-400/40 bg-accent-400/10 text-accent-200"
                 : isPast
                   ? "border-transparent text-[var(--t4)] hover:bg-[var(--hover)]"
                   : "border-transparent text-[var(--t3)] hover:border-[var(--line)] hover:bg-[var(--hover)] hover:text-[var(--t1)]",
@@ -54,7 +54,7 @@ export function WeekStrip() {
             <span className="text-[10px] text-[var(--t3)]">
               {day.date.getMonth() + 1}/{day.date.getDate()}
             </span>
-            {day.isToday ? <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" /> : null}
+            {day.isToday ? <span className="h-1.5 w-1.5 rounded-full bg-accent-400" /> : null}
             {count > 0 ? (
               <span className="rounded-full bg-[var(--hover-strong)] px-1.5 text-[10px] text-[var(--t3)]">
                 {count}

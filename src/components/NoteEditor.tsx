@@ -43,7 +43,7 @@ function ToolButton({ label, active, disabled, onClick, children }: ToolButtonPr
       className={[
         "flex h-7 w-7 items-center justify-center rounded-md border text-[13px] transition-colors",
         active
-          ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-300"
+          ? "border-accent-400/40 bg-accent-400/10 text-accent-300"
           : "border-transparent text-[var(--t3)] hover:border-[var(--line)] hover:bg-[var(--hover)] hover:text-[var(--t1)]",
         disabled ? "cursor-not-allowed opacity-30" : "",
       ].join(" ")}

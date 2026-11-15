@@ -1,9 +1,10 @@
-import type { Board, Placement, Tag, TagGroup, Task } from "../data/types";
+﻿import type { Board, Placement, Tag, TagGroup, Task } from "../data/types";
+import { t } from "./i18n";
 
 export const DAY_BOARDS: Board[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 export const BOARDS: Board[] = [...DAY_BOARDS, "week"];
 
-export const BOARD_LABEL: Record<Board, string> = {
+const RAW_BOARD_LABEL: Record<Board, string> = {
   mon: "周一",
   tue: "周二",
   wed: "周三",
@@ -13,6 +14,11 @@ export const BOARD_LABEL: Record<Board, string> = {
   sun: "周日",
   week: "周",
 };
+
+/** 访问时翻译，避免所有调用点都要传 locale */
+export const BOARD_LABEL: Record<Board, string> = new Proxy(RAW_BOARD_LABEL, {
+  get: (target, key: string) => t(target[key as Board] ?? key),
+});
 
 export interface BoardDay {
   board: Board;
@@ -142,7 +148,7 @@ export function descendants(taskId: string, children: Map<string | null, Task[]>
 
 export function placementBoardLabel(placement: Placement | undefined): string {
   if (!placement) return "";
-  return placement.board === "week" ? "周" : BOARD_LABEL[placement.board];
+  return placement.board === "week" ? t("周") : BOARD_LABEL[placement.board];
 }
 
 export function placementsForBoard(placements: Placement[], board: Board): Placement[] {
@@ -162,8 +168,8 @@ export function isOverdue(task: Task, today = dateKey(new Date())): boolean {
 export function dueLabel(task: Task): string | null {
   if (!task.effectiveDue) return null;
   const today = dateKey(new Date());
-  if (task.effectiveDue === today) return "今天";
-  if (task.effectiveDue < today) return `逾期 ${task.effectiveDue.slice(5)}`;
+  if (task.effectiveDue === today) return t("今天");
+  if (task.effectiveDue < today) return t("逾期 {date}", { date: task.effectiveDue.slice(5) });
   return task.effectiveDue.slice(5);
 }
 

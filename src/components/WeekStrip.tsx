@@ -1,6 +1,7 @@
 ﻿import type { Board } from "../data/types";
 import { BOARD_LABEL, dateKey, weekDays } from "../lib/board";
 import { useDragStore } from "../lib/drag";
+import { t } from "../lib/i18n";
 import { useAppStore } from "../store/useAppStore";
 
 export function WeekStrip() {
@@ -36,8 +37,8 @@ export function WeekStrip() {
             data-drop-board={isPast ? undefined : day.board}
             title={
               isPast
-                ? `${day.short} 已过去，不能投放（会顺延到今天）`
-                : `拖到这里 = 承诺到${day.short}`
+                ? t("{day} 已过去，不能投放（会顺延到今天）", { day: day.short })
+                : t("拖到这里 = 承诺到{day}", { day: day.short })
             }
             onClick={() => setBoard(day.board)}
             className={[
@@ -66,7 +67,7 @@ export function WeekStrip() {
       <button
         type="button"
         data-drop-board="week"
-        title="拖到这里 = 承诺到周图"
+        title={t("拖到这里 = 承诺到周图")}
         onClick={() => setBoard("week")}
         className={[
           "flex h-9 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-xs transition-colors",
@@ -76,8 +77,8 @@ export function WeekStrip() {
           dropRing("week"),
         ].join(" ")}
       >
-        <span className="font-medium">周</span>
-        <span className="text-[10px] text-[var(--t3)]">全景</span>
+        <span className="font-medium">{t("周")}</span>
+        <span className="text-[10px] text-[var(--t3)]">{t("全景")}</span>
         {countFor("week") > 0 ? (
           <span className="rounded-full bg-[var(--hover-strong)] px-1.5 text-[10px] text-[var(--t3)]">
             {countFor("week")}
@@ -85,7 +86,7 @@ export function WeekStrip() {
         ) : null}
       </button>
       <span className="ml-1 hidden shrink-0 text-[10px] text-[var(--t4)] xl:inline">
-        {BOARD_LABEL[board]} · 不翻周
+        {t("{board} · 不翻周", { board: BOARD_LABEL[board] })}
       </span>
     </div>
   );

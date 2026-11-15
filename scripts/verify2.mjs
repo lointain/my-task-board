@@ -348,9 +348,13 @@ check(
   `titles=${JSON.stringify(sunTitles)}`,
 );
 
-// --- 过去日期不是投放目标 ---
-const pastTab = page.locator('[data-drop-board="mon"]');
-check("周一（已过去）不是投放目标", (await pastTab.count()) === 0);
+// --- 过去日期不是投放目标（只在今天不是周一时可判定） ---
+if (new Date().getDay() === 1) {
+  check("今天就是周一，跳过“过去日期”检查", true);
+} else {
+  const pastTab = page.locator('[data-drop-board="mon"]');
+  check("周一（已过去）不是投放目标", (await pastTab.count()) === 0);
+}
 
 // --- TipTap 编辑器：待办列表 + 文本可选中 ---
 await page.locator(`[data-tree-row="${childAId}"] [data-tree-grip]`).dblclick({ force: true });
@@ -382,6 +386,29 @@ if (pb) {
 const selection = await page.evaluate(() => window.getSelection()?.toString() ?? "");
 check("编辑器文本可选中", selection.length > 0, JSON.stringify(selection));
 await page.getByRole("button", { name: "取消", exact: true }).click();
+
+// --- 多语言：切英文再切回 ---
+await page.locator('button[title="设置"]').click();
+await page.waitForTimeout(700);
+const langSelect = page.locator("select").filter({ hasText: /简体中文|English/ }).first();
+await langSelect.selectOption("en-US");
+await page.waitForTimeout(1000);
+await page.keyboard.press("Escape");
+await page.waitForTimeout(700);
+const enText = await page.locator("body").innerText();
+check(
+  "切换到英文",
+  enText.includes("Weekly stats") && (await page.evaluate(() => document.documentElement.lang)) === "en-US",
+  enText.slice(0, 80),
+);
+await page.locator('button[title="Settings"]').click();
+await page.waitForTimeout(700);
+await page.locator("select").filter({ hasText: /简体中文|English/ }).first().selectOption("zh-CN");
+await page.waitForTimeout(900);
+await page.keyboard.press("Escape");
+await page.waitForTimeout(600);
+const zhText = await page.locator("body").innerText();
+check("切回中文", zhText.includes("周统计") && zhText.includes("项目"), zhText.slice(0, 60));
 
 check("无运行时报错", errors.length === 0, errors.join(" | "));
 

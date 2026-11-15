@@ -1,6 +1,7 @@
-﻿import { Keyboard, Plus, Search } from "lucide-react";
+import { Keyboard, Plus, Search } from "lucide-react";
 import { useState } from "react";
 import type { Task } from "../data/types";
+import { t } from "../lib/i18n";
 import { useAppStore } from "../store/useAppStore";
 import { TreeEditor } from "./TreeEditor";
 
@@ -24,16 +25,18 @@ export function TaskTree({ onOpenDetail, onContextMenu, onNewProject }: TaskTree
       <div className="flex items-center justify-between border-b border-[var(--line-soft)] px-3 py-2.5">
         <div>
           <div className="text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--t3)]">
-            任务树
+            {t("任务树")}
           </div>
-          <div className="mt-0.5 text-[10px] text-[var(--t4)]">可直接编辑 · 拖到图上承诺</div>
+          <div className="mt-0.5 text-[10px] text-[var(--t4)]">
+            {t("可直接编辑 · 拖到图上承诺")}
+          </div>
         </div>
         <div className="flex items-center gap-1">
           <button
             type="button"
             onClick={() => setShowHelp((open) => !open)}
             className="flex h-7 w-7 items-center justify-center rounded-lg text-[var(--t3)] hover:bg-[var(--hover)] hover:text-[var(--t1)]"
-            title="快捷键"
+            title={t("快捷键")}
           >
             <Keyboard size={14} />
           </button>
@@ -42,7 +45,7 @@ export function TaskTree({ onOpenDetail, onContextMenu, onNewProject }: TaskTree
             onClick={onNewProject}
             className="flex h-7 items-center gap-1 rounded-lg bg-accent-400 px-2 text-[11px] font-medium text-accent-950 hover:bg-accent-300"
           >
-            <Plus size={12} /> 项目
+            <Plus size={12} /> {t("项目")}
           </button>
         </div>
       </div>
@@ -51,24 +54,24 @@ export function TaskTree({ onOpenDetail, onContextMenu, onNewProject }: TaskTree
         <div className="border-b border-[var(--line-soft)] bg-[var(--panel)] px-3 py-2 text-[10px] leading-relaxed text-[var(--t3)]">
           <div className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
             <kbd className="text-accent-300">Enter</kbd>
-            <span>在当前节点之后插入（顶层项目则新建子任务）</span>
+            <span>{t("在当前节点之后插入（顶层项目则新建子任务）")}</span>
             <kbd className="text-accent-300">Tab / Shift+Tab</kbd>
-            <span>缩进 / 反缩进</span>
+            <span>{t("缩进 / 反缩进")}</span>
             <kbd className="text-accent-300">Alt+↑/↓</kbd>
-            <span>同级上下移动</span>
+            <span>{t("同级上下移动")}</span>
             <kbd className="text-accent-300">↑/↓</kbd>
-            <span>切换行</span>
+            <span>{t("切换行")}</span>
             <kbd className="text-accent-300">Alt+←/→</kbd>
-            <span>折叠 / 展开</span>
-            <kbd className="text-accent-300">拖动把手</kbd>
-            <span>放到图上 = 承诺；放到行上 = 排序/换父级</span>
+            <span>{t("折叠 / 展开")}</span>
+            <kbd className="text-accent-300">{t("拖动把手")}</kbd>
+            <span>{t("放到图上 = 承诺；放到行上 = 排序/换父级")}</span>
           </div>
           <button
             type="button"
-            onClick={() => void createProject("新项目", "#34d399")}
+            onClick={() => void createProject(t("新项目"), "#34d399")}
             className="mt-1.5 text-[10px] text-[var(--t3)] hover:text-[var(--t2)]"
           >
-            或直接新建一个项目
+            {t("或直接新建一个项目")}
           </button>
         </div>
       ) : null}
@@ -84,7 +87,7 @@ export function TaskTree({ onOpenDetail, onContextMenu, onNewProject }: TaskTree
               : "text-[var(--t3)] hover:text-[var(--t2)]",
           ].join(" ")}
         >
-          今日到期 {stats?.dueToday ?? 0}
+          {t("今日到期 {n}", { n: stats?.dueToday ?? 0 })}
         </button>
         <button
           type="button"
@@ -96,7 +99,7 @@ export function TaskTree({ onOpenDetail, onContextMenu, onNewProject }: TaskTree
               : "text-[var(--t3)] hover:text-[var(--t2)]",
           ].join(" ")}
         >
-          本周 {stats?.dueWeek ?? 0}
+          {t("本周 {n}", { n: stats?.dueWeek ?? 0 })}
         </button>
         <button
           type="button"
@@ -108,7 +111,7 @@ export function TaskTree({ onOpenDetail, onContextMenu, onNewProject }: TaskTree
               : "text-[var(--t3)] hover:text-[var(--t2)]",
           ].join(" ")}
         >
-          逾期 {stats?.overdueCount ?? 0}
+          {t("逾期 {n}", { n: stats?.overdueCount ?? 0 })}
         </button>
         {dueFilter ? (
           <button
@@ -127,7 +130,7 @@ export function TaskTree({ onOpenDetail, onContextMenu, onNewProject }: TaskTree
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="在树中查找…"
+            placeholder={t("在树中查找…")}
             className="min-w-0 flex-1 bg-transparent text-[var(--t1)] outline-none placeholder:text-[var(--t4)]"
           />
         </label>
@@ -146,7 +149,7 @@ export function TaskTree({ onOpenDetail, onContextMenu, onNewProject }: TaskTree
       </div>
 
       <div className="border-t border-[var(--line-soft)] px-3 py-2 text-[10px] text-[var(--t4)]">
-        点行内文字直接改 · Enter 新建 · 拖把手到图上承诺
+        {t("点行内文字直接改 · Enter 新建 · 拖把手到图上承诺")}
       </div>
     </div>
   );

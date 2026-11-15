@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+﻿use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
@@ -344,6 +344,7 @@ fn init_db(path: &Path) -> Result<Connection, Box<dyn std::error::Error>> {
         ("show_momentum", "true"),
         ("momentum_horizon_days", "7"),
         ("child_view_mode", "direct"),
+        ("locale", "zh-CN"),
         ("color_by", "project"),
         ("theme", "dark"),
         ("week_starts_on", "mon"),
@@ -1454,3 +1455,4 @@ mod tests {
         assert!((vx - 6.0).abs() < 0.001);
     }
 }
+

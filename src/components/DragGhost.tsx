@@ -1,6 +1,7 @@
 ﻿import { GripVertical } from "lucide-react";
 import { BOARD_LABEL } from "../lib/board";
 import { useDragStore } from "../lib/drag";
+import { t } from "../lib/i18n";
 
 export function DragGhost() {
   const taskId = useDragStore((state) => state.taskId);
@@ -13,10 +14,10 @@ export function DragGhost() {
 
   const hint =
     over?.kind === "chart"
-      ? "松开：放到这张图"
+      ? t("松开：放到这张图")
       : over?.kind === "board"
         ? `松开：放到${BOARD_LABEL[over.board]}`
-        : "拖到日期的标签或图上";
+        : t("拖到日期的标签或图上");
 
   return (
     <div

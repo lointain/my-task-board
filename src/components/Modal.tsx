@@ -1,5 +1,6 @@
 ﻿import { X } from "lucide-react";
 import { type ReactNode, useEffect, useRef } from "react";
+import { t } from "../lib/i18n";
 
 interface ModalProps {
   open: boolean;
@@ -64,7 +65,7 @@ export function Modal({
             type="button"
             onClick={onClose}
             className="flex h-7 w-7 items-center justify-center rounded-lg text-[var(--t3)] hover:bg-[var(--hover)] hover:text-[var(--t1)]"
-            aria-label="关闭"
+            aria-label={t("关闭")}
           >
             <X size={15} />
           </button>

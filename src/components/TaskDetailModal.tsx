@@ -18,6 +18,7 @@ import {
 import { useEffect, useState } from "react";
 import { repo } from "../data/repository";
 import type { TagGroup, Task, TaskStatus } from "../data/types";
+import { t } from "../lib/i18n";
 import { statusLabel, useAppStore } from "../store/useAppStore";
 import { EmojiPickerModal } from "./EmojiPickerModal";
 import { Modal } from "./Modal";
@@ -88,7 +89,7 @@ function TagPicker({
   };
 
   if (groups.length === 0) {
-    return <p className="text-[11px] text-[var(--t3)]">还没有标签组，去设置里添加。</p>;
+    return <p className="text-[11px] text-[var(--t3)]">{t("还没有标签组，去设置里添加。")}</p>;
   }
 
   return (
@@ -102,7 +103,7 @@ function TagPicker({
                 {group.name}
               </span>
               <span className="text-[9px] text-[var(--t4)]">
-                {group.mode === "single" ? "单选" : "多选"}
+                {group.mode === "single" ? t("单选") : t("多选")}
               </span>
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -130,7 +131,7 @@ function TagPicker({
                 );
               })}
               {groupTags.length === 0 ? (
-                <span className="text-[10px] text-[var(--t4)]">暂无标签</span>
+                <span className="text-[10px] text-[var(--t4)]">{t("暂无标签")}</span>
               ) : null}
             </div>
           </div>
@@ -183,7 +184,7 @@ export function TaskDetailModal({ task, onClose }: TaskDetailModalProps) {
         StarterKit.configure({ link: { openOnClick: false } }),
         Image,
         Placeholder.configure({
-          placeholder: "记录上下文、下一步、链接… 输入 `[] ` 创建待办",
+          placeholder: t("记录上下文、下一步、链接… 输入 `[] ` 创建待办"),
         }),
       ],
       content: parseNote(task?.noteJson ?? null),
@@ -195,11 +196,11 @@ export function TaskDetailModal({ task, onClose }: TaskDetailModalProps) {
   if (!task) return null;
 
   const tagSummary = (() => {
-    if (selectedTags.length === 0) return "未设置属性";
+    if (selectedTags.length === 0) return t("未设置属性");
     const names = selectedTags
       .map((id) => data?.tags.find((tag) => tag.id === id)?.name)
       .filter(Boolean);
-    return names.length > 0 ? names.join(" · ") : "未设置属性";
+    return names.length > 0 ? names.join(" · ") : t("未设置属性");
   })();
 
   const save = async () => {
@@ -227,9 +228,11 @@ export function TaskDetailModal({ task, onClose }: TaskDetailModalProps) {
   return (
     <Modal
       open={Boolean(task)}
-      title="任务详情"
+      title={t("任务详情")}
       subtitle={
-        task.dueSource && task.dueSource !== "own" ? `截止日继承自「${task.dueSource}」` : undefined
+        task.dueSource && task.dueSource !== "own"
+          ? t("截止日继承自「{title}」", { title: task.dueSource })
+          : undefined
       }
       onClose={onClose}
       width="max-w-3xl"
@@ -238,14 +241,14 @@ export function TaskDetailModal({ task, onClose }: TaskDetailModalProps) {
           <button
             type="button"
             onClick={async () => {
-              if (window.confirm("删除这个任务及其所有子任务？")) {
+              if (window.confirm(t("删除这个任务及其所有子任务？"))) {
                 await deleteTask(task.id);
                 onClose();
               }
             }}
             className="mr-auto flex h-8 items-center gap-1 rounded-lg px-2.5 text-[11px] text-red-300 hover:bg-red-400/10"
           >
-            <Trash2 size={13} /> 删除
+            <Trash2 size={13} /> {t("删除")}
           </button>
           <button
             type="button"
@@ -260,7 +263,7 @@ export function TaskDetailModal({ task, onClose }: TaskDetailModalProps) {
             disabled={saving}
             className="h-8 rounded-lg bg-accent-400 px-3 text-[11px] font-medium text-accent-950 hover:bg-accent-300 disabled:opacity-60"
           >
-            {saving ? "保存中…" : "保存"}
+            {saving ? t("保存中…") : t("保存")}
           </button>
         </>
       }
@@ -280,7 +283,7 @@ export function TaskDetailModal({ task, onClose }: TaskDetailModalProps) {
                 ? "border-accent-400 bg-accent-400 text-accent-950"
                 : "border-[var(--line)] text-transparent hover:border-accent-400",
             ].join(" ")}
-            title="完成 / 取消完成"
+            title={t("完成 / 取消完成")}
           >
             <Check size={12} />
           </button>
@@ -290,8 +293,8 @@ export function TaskDetailModal({ task, onClose }: TaskDetailModalProps) {
                 type="button"
                 onClick={() => setEmojiOpen(true)}
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-[var(--line)] text-base hover:border-accent-400/40"
-                title="设置图标"
-                aria-label="设置图标"
+                title={t("设置图标")}
+                aria-label={t("设置图标")}
               >
                 {emoji || "＋"}
               </button>
@@ -320,7 +323,7 @@ export function TaskDetailModal({ task, onClose }: TaskDetailModalProps) {
                 ))}
               </select>
               <label className="flex h-7 items-center gap-1.5 rounded-md border border-[var(--line)] px-2 text-[11px] text-[var(--t3)]">
-                截止
+                {t("截止")}
                 <input
                   type="date"
                   value={dueAt}
@@ -330,7 +333,9 @@ export function TaskDetailModal({ task, onClose }: TaskDetailModalProps) {
               </label>
               {task.dueSource ? (
                 <span className="text-[10px] text-[var(--t3)]">
-                  {task.dueSource === "own" ? "自己的截止日" : `继承自「${task.dueSource}」`}
+                  {task.dueSource === "own"
+                    ? t("自己的截止日")
+                    : t("继承自「{title}」", { title: task.dueSource })}
                 </span>
               ) : null}
             </div>
@@ -348,11 +353,11 @@ export function TaskDetailModal({ task, onClose }: TaskDetailModalProps) {
             ) : (
               <ChevronRight size={13} className="text-[var(--t3)]" />
             )}
-            <span className="text-xs font-medium text-[var(--t2)]">属性</span>
+            <span className="text-xs font-medium text-[var(--t2)]">{t("属性")}</span>
             <span className="min-w-0 flex-1 truncate text-[10px] text-[var(--t3)]">
               {tagSummary}
             </span>
-            <span className="shrink-0 text-[9px] text-[var(--t4)]">标签组</span>
+            <span className="shrink-0 text-[9px] text-[var(--t4)]">{t("标签组")}</span>
           </button>
           {propsOpen ? (
             <div className="border-t border-[var(--line-soft)] px-3.5 pb-3 pt-2.5">
@@ -368,8 +373,8 @@ export function TaskDetailModal({ task, onClose }: TaskDetailModalProps) {
 
         <div className="rounded-xl border border-[var(--line)] bg-[var(--panel-2)]">
           <div className="flex items-center justify-between border-b border-[var(--line-soft)] px-3 py-2">
-            <h3 className="text-xs font-medium text-[var(--t2)]">说明</h3>
-            <span className="text-[9px] text-[var(--t4)]">可留空</span>
+            <h3 className="text-xs font-medium text-[var(--t2)]">{t("说明")}</h3>
+            <span className="text-[9px] text-[var(--t4)]">{t("可留空")}</span>
           </div>
           <div className="flex items-center gap-0.5 border-b border-[var(--line-soft)] px-2 py-1">
             <EditorButton

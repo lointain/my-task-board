@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { repo } from "../data/repository";
 import type { TagGroup } from "../data/types";
 import { groupColor } from "../lib/board";
+import { LOCALES, type Locale, setLocale, t } from "../lib/i18n";
 import { useAppStore } from "../store/useAppStore";
 import { Modal } from "./Modal";
 
@@ -29,6 +30,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
   const [showMomentum, setShowMomentum] = useState(true);
   const [horizon, setHorizon] = useState("7");
   const [childMode, setChildMode] = useState("direct");
+  const locale = (data?.settings.locale as Locale) ?? "zh-CN";
   const [dataDir, setDataDir] = useState("");
   const [backupPath, setBackupPath] = useState("");
 
@@ -57,16 +59,38 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
   return (
     <Modal
       open={open}
-      title="设置"
-      subtitle="标签组、动量默认、颜色、备份"
+      title={t("设置")}
+      subtitle={t("标签组、动量默认、颜色、备份")}
       onClose={onClose}
       width="max-w-3xl"
     >
       <div className="space-y-5">
+        <section className="rounded-xl border border-[var(--line)] bg-[var(--panel-2)] p-3">
+          <h3 className="text-xs font-medium text-[var(--t1)]">{t("通用")}</h3>
+          <label className="mt-2 flex items-center gap-2 text-[11px] text-[var(--t2)]">
+            {t("界面语言")}
+            <select
+              value={locale}
+              onChange={(event) => {
+                setLocale(event.target.value as Locale);
+                void setSetting("locale", event.target.value);
+              }}
+              className="h-7 rounded-md border border-[var(--line)] bg-[var(--panel)] px-2 text-[11px] text-[var(--t2)]"
+            >
+              {LOCALES.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
+            <span className="text-[10px] text-[var(--t4)]">{t("切换后立即生效")}</span>
+          </label>
+        </section>
+
         <section>
           <div className="mb-2 flex items-center justify-between">
-            <h3 className="text-xs font-medium text-[var(--t1)]">标签组</h3>
-            <span className="text-[10px] text-[var(--t4)]">单选 / 多选 / 自由输入</span>
+            <h3 className="text-xs font-medium text-[var(--t1)]">{t("标签组")}</h3>
+            <span className="text-[10px] text-[var(--t4)]">{t("单选 / 多选 / 自由输入")}</span>
           </div>
 
           <div className="space-y-2">
@@ -84,7 +108,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                     />
                     <span className="text-[12px] font-medium text-[var(--t1)]">{group.name}</span>
                     <span className="rounded border border-[var(--line)] px-1 text-[9px] text-[var(--t3)]">
-                      {group.mode === "single" ? "单选" : "多选"}
+                      {group.mode === "single" ? t("单选") : t("多选")}
                     </span>
                     {group.isFree ? (
                       <span className="rounded border border-accent-400/20 px-1 text-[9px] text-accent-300">
@@ -94,12 +118,14 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                     <button
                       type="button"
                       onClick={() => {
-                        if (window.confirm(`删除标签组「${group.name}」及其标签？`)) {
+                        if (
+                          window.confirm(t("删除标签组「{name}」及其标签？", { name: group.name }))
+                        ) {
                           void deleteTagGroup(group.id);
                         }
                       }}
                       className="ml-auto flex h-6 w-6 items-center justify-center rounded text-red-300/70 hover:bg-red-400/10 hover:text-red-300"
-                      title="删除标签组"
+                      title={t("删除标签组")}
                     >
                       <Trash2 size={12} />
                     </button>
@@ -120,14 +146,14 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                           type="button"
                           onClick={() => void deleteTag(tag.id)}
                           className="text-[var(--t4)] hover:text-red-300"
-                          title="删除标签"
+                          title={t("删除标签")}
                         >
                           ×
                         </button>
                       </span>
                     ))}
                     {tags.length === 0 ? (
-                      <span className="text-[10px] text-[var(--t4)]">暂无标签</span>
+                      <span className="text-[10px] text-[var(--t4)]">{t("暂无标签")}</span>
                     ) : null}
                   </div>
 
@@ -140,7 +166,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                       onKeyDown={(event) => {
                         if (event.key === "Enter") void addTag(group);
                       }}
-                      placeholder="新增标签…"
+                      placeholder={t("新增标签…")}
                       className="h-7 min-w-0 flex-1 rounded-md border border-[var(--line)] bg-[var(--panel)] px-2 text-[10px] text-[var(--t1)] outline-none focus:border-accent-400/40"
                     />
                     <button
@@ -148,7 +174,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                       onClick={() => void addTag(group)}
                       className="flex h-7 items-center gap-1 rounded-md border border-[var(--line)] px-2 text-[10px] text-[var(--t2)] hover:bg-[var(--hover)]"
                     >
-                      <Plus size={11} /> 添加
+                      <Plus size={11} /> {t("添加")}
                     </button>
                   </div>
                 </div>
@@ -161,7 +187,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
               <input
                 value={groupName}
                 onChange={(event) => setGroupName(event.target.value)}
-                placeholder="新标签组名称"
+                placeholder={t("新标签组名称")}
                 className="h-8 min-w-[160px] flex-1 rounded-md border border-[var(--line)] bg-[var(--panel)] px-2 text-[11px] text-[var(--t1)] outline-none focus:border-accent-400/40"
               />
               <select
@@ -169,8 +195,8 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                 onChange={(event) => setGroupMode(event.target.value as "single" | "multi")}
                 className="h-8 rounded-md border border-[var(--line)] bg-[var(--panel)] px-2 text-[11px] text-[var(--t2)]"
               >
-                <option value="single">单选</option>
-                <option value="multi">多选</option>
+                <option value="single">{t("单选")}</option>
+                <option value="multi">{t("多选")}</option>
               </select>
               <label className="flex items-center gap-1 text-[10px] text-[var(--t3)]">
                 <input
@@ -202,9 +228,9 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
 
         <section className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <div className="rounded-xl border border-[var(--line)] bg-[var(--panel-2)] p-3">
-            <h3 className="text-xs font-medium text-[var(--t1)]">默认动量</h3>
+            <h3 className="text-xs font-medium text-[var(--t1)]">{t("默认动量")}</h3>
             <p className="mt-1 text-[10px] text-[var(--t3)]">
-              无截止日任务的默认 x 速度（点/天）。
+              {t("无截止日任务的默认 x 速度（点/天）。")}
             </p>
             <div className="mt-2 flex gap-1.5">
               <input
@@ -223,7 +249,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
           </div>
 
           <div className="rounded-xl border border-[var(--line)] bg-[var(--panel-2)] p-3">
-            <h3 className="text-xs font-medium text-[var(--t1)]">图上显示</h3>
+            <h3 className="text-xs font-medium text-[var(--t1)]">{t("图上显示")}</h3>
             <label className="mt-2 flex items-center gap-2 text-[11px] text-[var(--t2)]">
               <input
                 type="checkbox"
@@ -233,10 +259,10 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                   void setSetting("show_momentum", event.target.checked ? "true" : "false");
                 }}
               />
-              显示动量（线段、刻度、虚影、逾期尾巴）
+              {t("显示动量（线段、刻度、虚影、逾期尾巴）")}
             </label>
             <label className="mt-2 flex items-center gap-2 text-[11px] text-[var(--t2)]">
-              选中面板的子节点
+              {t("选中面板的子节点")}
               <select
                 value={childMode}
                 onChange={(event) => {
@@ -245,13 +271,13 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                 }}
                 className="h-7 rounded-md border border-[var(--line)] bg-[var(--panel)] px-2 text-[11px] text-[var(--t2)]"
               >
-                <option value="direct">直接子节点</option>
-                <option value="breadcrumb">面包屑 + 列表</option>
-                <option value="tree">整棵子树</option>
+                <option value="direct">{t("直接子节点")}</option>
+                <option value="breadcrumb">{t("面包屑 + 列表")}</option>
+                <option value="tree">{t("整棵子树")}</option>
               </select>
             </label>
             <label className="mt-2 flex items-center gap-2 text-[11px] text-[var(--t2)]">
-              预测天数
+              {t("预测天数")}
               <select
                 value={horizon}
                 onChange={(event) => {
@@ -262,7 +288,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
               >
                 {["3", "7", "14"].map((value) => (
                   <option key={value} value={value}>
-                    {value} 天
+                    {t("{n} 天", { n: value })}
                   </option>
                 ))}
               </select>
@@ -270,8 +296,8 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
           </div>
 
           <div className="rounded-xl border border-[var(--line)] bg-[var(--panel-2)] p-3">
-            <h3 className="text-xs font-medium text-[var(--t1)]">着色依据</h3>
-            <p className="mt-1 text-[10px] text-[var(--t3)]">点颜色按项目或某个标签组。</p>
+            <h3 className="text-xs font-medium text-[var(--t1)]">{t("着色依据")}</h3>
+            <p className="mt-1 text-[10px] text-[var(--t3)]">{t("点颜色按项目或某个标签组。")}</p>
             <div className="mt-2 flex gap-1.5">
               <select
                 value={colorBy}
@@ -281,10 +307,10 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                 }}
                 className="h-8 min-w-0 flex-1 rounded-md border border-[var(--line)] bg-[var(--panel)] px-2 text-[11px] text-[var(--t2)]"
               >
-                <option value="project">按项目</option>
+                <option value="project">{t("按项目")}</option>
                 {(data?.tagGroups ?? []).map((group) => (
                   <option key={group.id} value={group.id}>
-                    按标签组：{group.name}
+                    {t("按标签组：{name}", { name: group.name })}
                   </option>
                 ))}
               </select>
@@ -294,9 +320,11 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
 
         <section className="rounded-xl border border-[var(--line)] bg-[var(--panel-2)] p-3">
           <h3 className="flex items-center gap-1.5 text-xs font-medium text-[var(--t1)]">
-            <Database size={13} /> 数据与备份
+            <Database size={13} /> {t("数据与备份")}
           </h3>
-          <p className="mt-1 break-all text-[10px] text-[var(--t3)]">数据目录：{dataDir || "…"}</p>
+          <p className="mt-1 break-all text-[10px] text-[var(--t3)]">
+            {t("数据目录：{dir}", { dir: dataDir || "…" })}
+          </p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <button
               type="button"

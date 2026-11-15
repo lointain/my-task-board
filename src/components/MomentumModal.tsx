@@ -1,5 +1,6 @@
 ﻿import { useEffect, useState } from "react";
 import type { Placement, Task } from "../data/types";
+import { t } from "../lib/i18n";
 import { useAppStore } from "../store/useAppStore";
 import { Modal } from "./Modal";
 
@@ -29,8 +30,8 @@ export function MomentumModal({ task, placement, onClose }: MomentumModalProps) 
   return (
     <Modal
       open={Boolean(task && placement)}
-      title="动量 / 截止日期"
-      subtitle={`${task.title} · ${placement.board === "week" ? "周图" : placement.board.toUpperCase()}`}
+      title={t("动量 / 截止日期")}
+      subtitle={`${task.title} · ${placement.board === "week" ? t("周图") : placement.board.toUpperCase()}`}
       onClose={onClose}
       width="max-w-lg"
       footer={
@@ -63,7 +64,7 @@ export function MomentumModal({ task, placement, onClose }: MomentumModalProps) 
     >
       <div className="space-y-4">
         <label className="block">
-          <span className="mb-1.5 block text-[11px] text-[var(--t3)]">截止日期</span>
+          <span className="mb-1.5 block text-[11px] text-[var(--t3)]">{t("截止日期")}</span>
           <input
             type="date"
             value={dueAt}
@@ -72,10 +73,10 @@ export function MomentumModal({ task, placement, onClose }: MomentumModalProps) 
           />
           <div className="mt-1.5 flex flex-wrap items-center gap-1">
             {[
-              { label: "今天", days: 0 },
-              { label: "+1 天", days: 1 },
-              { label: "+3 天", days: 3 },
-              { label: "+7 天", days: 7 },
+              { label: t("今天"), days: 0 },
+              { label: t("+1 天"), days: 1 },
+              { label: t("+3 天"), days: 3 },
+              { label: t("+7 天"), days: 7 },
             ].map((preset) => (
               <button
                 key={preset.label}
@@ -100,12 +101,12 @@ export function MomentumModal({ task, placement, onClose }: MomentumModalProps) 
             </button>
           </div>
           <span className="mt-1 block text-[10px] text-[var(--t4)]">
-            只影响动量和逾期筛选；不影响是否上图。留空表示无截止日。
+            {t("只影响动量和逾期筛选；不影响是否上图。留空表示无截止日。")}
           </span>
         </label>
 
         <div>
-          <span className="mb-1.5 block text-[11px] text-[var(--t3)]">动量模式</span>
+          <span className="mb-1.5 block text-[11px] text-[var(--t3)]">{t("动量模式")}</span>
           <div className="flex gap-1 rounded-lg border border-[var(--line)] p-0.5">
             {(["auto", "manual"] as const).map((value) => (
               <button
@@ -119,7 +120,7 @@ export function MomentumModal({ task, placement, onClose }: MomentumModalProps) 
                     : "text-[var(--t3)] hover:text-[var(--t2)]",
                 ].join(" ")}
               >
-                {value === "auto" ? "自动（按截止日）" : "手动"}
+                {value === "auto" ? t("自动（按截止日）") : t("手动")}
               </button>
             ))}
           </div>
@@ -127,7 +128,9 @@ export function MomentumModal({ task, placement, onClose }: MomentumModalProps) 
 
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
-            <span className="mb-1.5 block text-[11px] text-[var(--t3)]">x 速度（点/天）</span>
+            <span className="mb-1.5 block text-[11px] text-[var(--t3)]">
+              {t("x 速度（点/天）")}
+            </span>
             <input
               type="number"
               step="0.05"
@@ -138,7 +141,9 @@ export function MomentumModal({ task, placement, onClose }: MomentumModalProps) 
             />
           </label>
           <label className="block">
-            <span className="mb-1.5 block text-[11px] text-[var(--t3)]">y 速度（点/天）</span>
+            <span className="mb-1.5 block text-[11px] text-[var(--t3)]">
+              {t("y 速度（点/天）")}
+            </span>
             <input
               type="number"
               step="0.05"

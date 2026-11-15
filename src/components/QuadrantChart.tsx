@@ -1,4 +1,4 @@
-import { axisBottom, axisLeft } from "d3-axis";
+﻿import { axisBottom, axisLeft } from "d3-axis";
 import { drag } from "d3-drag";
 import { scaleLinear } from "d3-scale";
 import { select } from "d3-selection";
@@ -8,6 +8,7 @@ import { BOARD_LABEL, colorForTask, dateKey, isOverdue, shortTitle } from "../li
 import { CHART, CHART_INNER_H, CHART_INNER_W, pixelToUrgency } from "../lib/chartGeometry";
 import { useDragStore } from "../lib/drag";
 import { matchesFilter } from "../lib/filter";
+import { t } from "../lib/i18n";
 import { ChartTooltip, type ChildViewMode } from "./ChartTooltip";
 
 function cssColor(name: string, fallback: string) {
@@ -273,7 +274,7 @@ export function QuadrantChart({
         .attr("fill", cssColor(`--${q.id}`, q.color))
         .attr("opacity", 0.8)
         .attr("font-size", 11)
-        .text(q.label);
+        .text(t(q.label));
     }
 
     const xAxis = axisBottom(x).tickValues(ticks).tickSize(0).tickPadding(10);

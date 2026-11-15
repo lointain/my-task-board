@@ -24,6 +24,7 @@ import { BOARD_LABEL } from "./lib/board";
 import { clientToChartPoint } from "./lib/chartGeometry";
 import { registerDropHandler } from "./lib/drag";
 import { matchesFilter } from "./lib/filter";
+import { localeFromSettings, setLocale, t } from "./lib/i18n";
 import { useAppStore } from "./store/useAppStore";
 
 interface MenuState {
@@ -37,11 +38,15 @@ export default function App() {
   const data = useAppStore((state) => state.data);
   const settings = data?.settings ?? {};
   const theme = settings.theme === "light" ? "light" : "dark";
+  const locale = localeFromSettings(settings);
+  // 渲染子组件之前切换当前语言（模块级）
+  setLocale(locale);
   const setSetting = useAppStore((state) => state.setSetting);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-  }, [theme]);
+    document.documentElement.lang = locale;
+  }, [theme, locale]);
   const loading = useAppStore((state) => state.loading);
   const error = useAppStore((state) => state.error);
   const clearError = useAppStore((state) => state.clearError);
@@ -137,43 +142,43 @@ export default function App() {
     if (!menuTask) return [];
     const items: MenuItem[] = [
       {
-        label: "详情",
+        label: t("详情"),
         onClick: () => setDetailId(menuTask.id),
       },
       {
-        label: "在树中编辑",
+        label: t("在树中编辑"),
         onClick: () => focusInTree(menuTask.id),
       },
       {
-        label: "新建子任务",
+        label: t("新建子任务"),
         icon: Plus,
         onClick: () => {
-          void createTask({ title: "新任务", parentId: menuTask.id });
+          void createTask({ title: t("新任务"), parentId: menuTask.id });
           focusInTree(menuTask.id);
         },
       },
       {
-        label: menuTask.status === "doing" ? "暂停处理" : "开始处理",
+        label: menuTask.status === "doing" ? t("暂停处理") : t("开始处理"),
         onClick: () =>
           void updateTask(menuTask.id, { status: menuTask.status === "doing" ? "todo" : "doing" }),
       },
     ];
     if (menuPlacement) {
       items.push({
-        label: "动量 / 截止日期",
+        label: t("动量 / 截止日期"),
         icon: CalendarDays,
         onClick: () => setMomentumTaskId(menuTask.id),
       });
       items.push({
-        label: "从图上移除",
+        label: t("从图上移除"),
         onClick: () => void removePlacement(menuTask.id),
       });
     }
     items.push({
-      label: "删除",
+      label: t("删除"),
       danger: true,
       onClick: () => {
-        if (window.confirm(`删除「${menuTask.title}」及其子任务？`)) {
+        if (window.confirm(t("删除「{title}」及其子任务？", { title: menuTask.title }))) {
           void deleteTask(menuTask.id);
         }
       },
@@ -185,7 +190,7 @@ export default function App() {
     return (
       <div className="flex h-screen items-center justify-center bg-[var(--bg)] text-sm text-[var(--t3)]">
         <Sparkles size={16} className="mr-2 animate-pulse text-accent-300" />
-        正在加载本地数据…
+        {t("正在加载本地数据…")}
       </div>
     );
   }
@@ -202,7 +207,7 @@ export default function App() {
           </div>
           <div className="leading-tight">
             <div className="text-sm font-semibold tracking-tight">TaskBoard</div>
-            <div className="text-[10px] text-[var(--t3)]">local-first · 承诺图</div>
+            <div className="text-[10px] text-[var(--t3)]">{t("local-first · 承诺图")}</div>
           </div>
         </div>
 
@@ -216,21 +221,21 @@ export default function App() {
             onClick={() => setProjectOpen(true)}
             className="flex h-8 items-center gap-1.5 rounded-lg bg-accent-400 px-3 text-[11px] font-medium text-accent-950 hover:bg-accent-300"
           >
-            <Plus size={13} /> 项目
+            <Plus size={13} /> {t("项目")}
           </button>
           <button
             type="button"
             onClick={() => setStatsOpen(true)}
             className="flex h-8 items-center gap-1.5 rounded-lg border border-[var(--line)] bg-[var(--panel)] px-2.5 text-[11px] text-[var(--t2)] hover:bg-[var(--hover)]"
           >
-            <BarChart3 size={13} /> 周统计
+            <BarChart3 size={13} /> {t("周统计")}
           </button>
           <button
             type="button"
             onClick={() => void setSetting("theme", theme === "dark" ? "light" : "dark")}
             className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--panel)] text-[var(--t3)] hover:text-[var(--t1)]"
-            title={theme === "dark" ? "切换到浅色" : "切换到深色"}
-            aria-label={theme === "dark" ? "切换到浅色" : "切换到深色"}
+            title={theme === "dark" ? t("切换到浅色") : t("切换到深色")}
+            aria-label={theme === "dark" ? t("切换到浅色") : t("切换到深色")}
           >
             {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
           </button>
@@ -238,7 +243,7 @@ export default function App() {
             type="button"
             onClick={() => setSettingsOpen(true)}
             className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--panel)] text-[var(--t3)] hover:text-[var(--t1)]"
-            title="设置"
+            title={t("设置")}
           >
             <Settings2 size={14} />
           </button>
@@ -250,15 +255,15 @@ export default function App() {
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <h1 className="text-sm font-semibold tracking-tight text-[var(--t1)]">
-                {BOARD_LABEL[board]}承诺图
+                {t("{board}承诺图", { board: BOARD_LABEL[board] })}
               </h1>
               <span className="text-[10px] text-[var(--t3)]">
-                {board === "week" ? "日板聚合 + 周级承诺" : "拖点调整 · 右键动量"}
+                {board === "week" ? t("日板聚合 + 周级承诺") : t("拖点调整 · 右键动量")}
               </span>
             </div>
             <div className="flex items-center gap-2 text-[10px] text-[var(--t3)]">
               <span className="rounded-full border border-[var(--line)] bg-[var(--panel)] px-2 py-0.5">
-                {chartPlacements.length} 承诺
+                {t("{n} 承诺", { n: chartPlacements.length })}
               </span>
             </div>
           </div>
@@ -297,19 +302,20 @@ export default function App() {
 
           <div className="flex items-center gap-3 px-1 text-[10px] text-[var(--t3)]">
             <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-[var(--q1)]" /> Q1 立即
+              <span className="h-2 w-2 rounded-full bg-[var(--q1)]" /> {t("Q1 立即")}
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-[var(--q2)]" /> Q2 安排
+              <span className="h-2 w-2 rounded-full bg-[var(--q2)]" /> {t("Q2 安排")}
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-[var(--q3)]" /> Q3 限时
+              <span className="h-2 w-2 rounded-full bg-[var(--q3)]" /> {t("Q3 限时")}
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-[var(--q4)]" /> Q4 删/归档
+              <span className="h-2 w-2 rounded-full bg-[var(--q4)]" /> {t("Q4 删/归档")}
             </span>
             <span className="ml-auto text-[var(--t4)]">
-              颜色 = {data?.settings.color_by === "project" ? "项目" : "标签组"} · 拖拽 / 右键 /
+              颜色 = {data?.settings.color_by === "project" ? t("项目") : t("标签组")} ·{" "}
+              {t("拖拽 / 右键 / 双击")}
               双击
             </span>
           </div>
@@ -327,12 +333,12 @@ export default function App() {
       <footer className="flex h-8 shrink-0 items-center gap-4 border-t border-[var(--line)] bg-[var(--panel-2)] px-4 text-[10px] text-[var(--t3)]">
         <span className="flex items-center gap-1.5">
           <span className="h-1.5 w-1.5 rounded-full bg-accent-400" />
-          SQLite · WAL · 本地
+          {t("SQLite · WAL · 本地")}
         </span>
         <span className="text-[var(--t5)]">|</span>
         <span>Tauri 2 · React 19 · D3 · TipTap</span>
         <span className="ml-auto flex items-center gap-1 text-[var(--t4)]">
-          <ListTree size={11} /> 拖动树节点到左侧图 = 承诺
+          <ListTree size={11} /> {t("拖动树节点到左侧图 = 承诺")}
         </span>
       </footer>
 

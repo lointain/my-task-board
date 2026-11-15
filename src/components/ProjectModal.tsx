@@ -1,4 +1,5 @@
 ﻿import { useEffect, useState } from "react";
+import { t } from "../lib/i18n";
 import { useAppStore } from "../store/useAppStore";
 import { Modal } from "./Modal";
 
@@ -26,8 +27,8 @@ export function ProjectModal({ open, onClose }: ProjectModalProps) {
   return (
     <Modal
       open={open}
-      title="新建项目"
-      subtitle="顶层节点就是项目，也是根任务"
+      title={t("新建项目")}
+      subtitle={t("顶层节点就是项目，也是根任务")}
       onClose={onClose}
       width="max-w-md"
       footer={
@@ -55,7 +56,7 @@ export function ProjectModal({ open, onClose }: ProjectModalProps) {
     >
       <div className="space-y-4">
         <label className="block">
-          <span className="mb-1.5 block text-[11px] text-[var(--t3)]">项目名称</span>
+          <span className="mb-1.5 block text-[11px] text-[var(--t3)]">{t("项目名称")}</span>
           <input
             autoFocus
             value={title}
@@ -66,22 +67,22 @@ export function ProjectModal({ open, onClose }: ProjectModalProps) {
                 onClose();
               }
             }}
-            placeholder="例如：TaskBoard 开发"
+            placeholder={t("例如：TaskBoard 开发")}
             className="h-9 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-2)] px-3 text-sm text-[var(--t1)] outline-none focus:border-accent-400/40"
           />
         </label>
         <label className="block">
-          <span className="mb-1.5 block text-[11px] text-[var(--t3)]">图标（可选）</span>
+          <span className="mb-1.5 block text-[11px] text-[var(--t3)]">{t("图标（可选）")}</span>
           <input
             value={emoji}
             onChange={(event) => setEmoji(event.target.value)}
-            placeholder="🚀 或任意 emoji"
+            placeholder={t("🚀 或任意 emoji")}
             maxLength={4}
             className="h-9 w-24 rounded-lg border border-[var(--line)] bg-[var(--panel-2)] px-3 text-center text-sm text-[var(--t1)] outline-none focus:border-accent-400/40"
           />
         </label>
         <div>
-          <span className="mb-1.5 block text-[11px] text-[var(--t3)]">颜色</span>
+          <span className="mb-1.5 block text-[11px] text-[var(--t3)]">{t("颜色")}</span>
           <div className="flex gap-2">
             {COLORS.map((item) => (
               <button

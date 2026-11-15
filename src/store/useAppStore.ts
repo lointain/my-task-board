@@ -1,4 +1,4 @@
-import { create } from "zustand";
+﻿import { create } from "zustand";
 import { repo } from "../data/repository";
 import type {
   AppData,
@@ -12,6 +12,7 @@ import type {
 import { EMPTY_FILTER } from "../data/types";
 import { boardDateKey, currentBoard } from "../lib/board";
 import { clientToChartPoint } from "../lib/chartGeometry";
+import { t } from "../lib/i18n";
 
 interface AppStore {
   data: AppData | null;
@@ -359,13 +360,13 @@ export const useAppStore = create<AppStore>((set, get) => ({
 export function statusLabel(status: TaskStatus): string {
   switch (status) {
     case "todo":
-      return "待办";
+      return t("待办");
     case "doing":
-      return "进行中";
+      return t("进行中");
     case "done":
-      return "已完成";
+      return t("已完成");
     case "archived":
-      return "已归档";
+      return t("已归档");
   }
 }
 

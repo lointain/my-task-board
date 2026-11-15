@@ -12,6 +12,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { Placement, Tag, Task } from "../data/types";
 import { BOARD_LABEL, dateKey } from "../lib/board";
+import { t } from "../lib/i18n";
 import { QUADRANTS, quadrantOf } from "../lib/quadrant";
 
 /** 树形视图的展开状态：跨选中、跨重开都保留 */
@@ -134,16 +135,17 @@ export function ChartTooltip({
   const offsetY = pointer.y > container.height - 260 ? -220 : 14;
 
   const dueText = (() => {
-    if (!task.effectiveDue) return "无截止日";
-    if (overdue) return `逾期 ${Math.abs(dueIn ?? 0)} 天（${task.effectiveDue}）`;
-    if (dueIn === 0) return `今天到期（${task.effectiveDue}）`;
-    return `还有 ${dueIn} 天（${task.effectiveDue}）`;
+    if (!task.effectiveDue) return t("无截止日");
+    if (overdue)
+      return t("逾期 {n} 天（{date}）", { n: Math.abs(dueIn ?? 0), date: task.effectiveDue });
+    if (dueIn === 0) return t("今天到期（{date}）", { date: task.effectiveDue });
+    return t("还有 {n} 天（{date}）", { n: dueIn ?? 0, date: task.effectiveDue });
   })();
 
   const momentumText =
     placement.momentumMode === "auto"
-      ? `自动 · ${placement.vx.toFixed(2)}/天`
-      : `手动 · ${placement.vx.toFixed(2)}/天`;
+      ? t("自动 · {v}/天", { v: placement.vx.toFixed(2) })
+      : t("手动 · {v}/天", { v: placement.vx.toFixed(2) });
 
   const daysToEdge =
     placement.vx > 0 ? Math.max(0, Math.round((placement.x - 50) / placement.vx)) : null;
@@ -186,19 +188,19 @@ export function ChartTooltip({
               color: quadrant.color,
             }}
           >
-            {quadrant.short} · {quadrant.label}
+            {quadrant.short} · {t(quadrant.label)}
           </span>
-          <span className="ml-auto text-[var(--t3)]">{quadrant.description}</span>
+          <span className="ml-auto text-[var(--t3)]">{t(quadrant.description)}</span>
         </div>
 
         <div className="flex items-center gap-2 text-[var(--t3)]">
-          <span className="text-[var(--t3)]">紧迫</span>
+          <span className="text-[var(--t3)]">{t("紧迫")}</span>
           <span className="font-mono text-[var(--t1)]">{Math.round(placement.x)}</span>
           <span className="text-[var(--t5)]">·</span>
-          <span className="text-[var(--t3)]">重要</span>
+          <span className="text-[var(--t3)]">{t("重要")}</span>
           <span className="font-mono text-[var(--t1)]">{Math.round(placement.y)}</span>
           <span className="ml-auto text-[9px] text-[var(--t4)]">
-            {placement.board === "week" ? "周级" : BOARD_LABEL[placement.board]}
+            {placement.board === "week" ? t("周级") : BOARD_LABEL[placement.board]}
           </span>
         </div>
 
@@ -213,7 +215,9 @@ export function ChartTooltip({
         {task.dueSource && task.dueSource !== "own" ? (
           <div className="flex items-start gap-1.5">
             <AlertTriangle size={11} className="mt-px shrink-0 text-[var(--t4)]" />
-            <span className="text-[var(--t4)]">截止日继承自「{task.dueSource}」</span>
+            <span className="text-[var(--t4)]">
+              {t("截止日继承自「{title}」", { title: task.dueSource })}
+            </span>
           </div>
         ) : null}
 
@@ -222,7 +226,7 @@ export function ChartTooltip({
           <span className="text-[var(--t3)]">{momentumText}</span>
           {daysToEdge !== null && placement.momentumMode === "auto" ? (
             <span className="ml-auto text-[9px] text-[var(--t4)]">
-              {daysToEdge > 0 ? `${daysToEdge} 天后进 Q1` : "已在 Q1"}
+              {daysToEdge > 0 ? t("{n} 天后进 Q1", { n: daysToEdge }) : t("已在 Q1")}
             </span>
           ) : null}
         </div>
@@ -270,11 +274,11 @@ export function ChartTooltip({
             ) : null}
             <div className="mb-1 flex items-center justify-between text-[9px] text-[var(--t3)]">
               <span>
-                子任务 {childRows.length}
-                {childMode === "tree" ? "（整棵）" : ""}
+                {t("子任务 {n}", { n: childRows.length })}
+                {childMode === "tree" ? t("（整棵）") : ""}
               </span>
               <span className="text-[var(--t4)]">
-                {childRows.filter((row) => row.task.status === "done").length} 完成
+                {t("{n} 完成", { n: childRows.filter((row) => row.task.status === "done").length })}
               </span>
             </div>
             <div className="max-h-[168px] space-y-0.5 overflow-y-auto pr-1">
@@ -294,8 +298,8 @@ export function ChartTooltip({
                           childMode === "tree" ? toggleExpand(child.id) : setFocusId(child.id)
                         }
                         className="flex h-4 w-3 shrink-0 items-center justify-center text-[var(--t3)] hover:text-[var(--t1)]"
-                        title={childMode === "tree" ? "展开 / 收起" : "进入下一层"}
-                        aria-label={childMode === "tree" ? "展开" : "进入下一层"}
+                        title={childMode === "tree" ? t("展开 / 收起") : t("进入下一层")}
+                        aria-label={childMode === "tree" ? t("展开") : t("进入下一层")}
                       >
                         {childMode === "tree" && expanded ? (
                           <ChevronDown size={10} />
@@ -310,7 +314,7 @@ export function ChartTooltip({
                       type="button"
                       onClick={() => onToggleDone?.(child.id, child.status !== "done")}
                       className="flex h-4 w-4 shrink-0 items-center justify-center"
-                      title={child.status === "done" ? "取消完成" : "完成"}
+                      title={child.status === "done" ? t("取消完成") : t("完成")}
                     >
                       {child.status === "done" ? (
                         <CheckSquare2 size={12} className="text-accent-400" />
@@ -344,7 +348,7 @@ export function ChartTooltip({
                           ? "text-amber-300"
                           : "text-[var(--t4)] hover:text-[var(--t2)]",
                       ].join(" ")}
-                      title={child.status === "doing" ? "暂停处理" : "开始处理"}
+                      title={child.status === "doing" ? t("暂停处理") : t("开始处理")}
                     >
                       <Play size={10} />
                     </button>
@@ -356,9 +360,9 @@ export function ChartTooltip({
         ) : null}
 
         <div className="flex items-center gap-2 pt-0.5 text-[9px] text-[var(--t4)]">
-          <span>{task.noteJson ? "有说明" : "无说明"}</span>
+          <span>{task.noteJson ? t("有说明") : t("无说明")}</span>
           <span className="text-[var(--t5)]">|</span>
-          <span>{interactive ? "右键可改状态" : "双击打开详情"}</span>
+          <span>{interactive ? t("右键可改状态") : t("双击打开详情")}</span>
         </div>
       </div>
     </div>

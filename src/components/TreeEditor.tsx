@@ -18,6 +18,7 @@ import {
 } from "../lib/board";
 import { hitTest, useDragStore } from "../lib/drag";
 import { matchesTreeFilter } from "../lib/filter";
+import { t } from "../lib/i18n";
 import { useAppStore } from "../store/useAppStore";
 
 interface TreeEditorProps {
@@ -176,7 +177,7 @@ export function TreeEditor({
     const isTopLevel = !task.parentId;
     const parentId = isTopLevel ? task.id : task.parentId;
     const created = await createTask({
-      title: "新任务",
+      title: t("新任务"),
       parentId,
       afterId: isTopLevel ? null : task.id,
     });
@@ -373,7 +374,10 @@ export function TreeEditor({
       event.preventDefault();
       if (hasChildren) {
         const kids = (children.get(task.id) ?? []).length;
-        if (!window.confirm(`删除「${task.title}」及其 ${kids} 个子任务？`)) return;
+        if (
+          !window.confirm(t("删除「{title}」及其 {n} 个子任务？", { title: task.title, n: kids }))
+        )
+          return;
       }
       const prevId = rows[index - 1]?.task.id ?? null;
       await deleteTask(task.id);
@@ -479,7 +483,7 @@ export function TreeEditor({
           data-tree-grip={task.id}
           className="flex h-5 w-3 shrink-0 cursor-grab items-center justify-center text-[var(--t4)] hover:text-[var(--t2)] active:cursor-grabbing"
           onPointerDown={(event) => beginDrag(task, event)}
-          title="拖动：放到图上=承诺；放到行上=排序/换父级"
+          title={t("拖动：放到图上=承诺；放到行上=排序/换父级")}
         >
           <GripVertical size={11} className="opacity-40 group-hover:opacity-100" />
         </span>
@@ -492,7 +496,7 @@ export function TreeEditor({
             event.stopPropagation();
             void completeTask(task.id, !checked);
           }}
-          title={checked ? "取消完成（含子任务）" : "完成（含子任务）"}
+          title={checked ? t("取消完成（含子任务）") : t("完成（含子任务）")}
         >
           {checked ? (
             <CheckSquare2 size={14} className="text-accent-400" />
@@ -509,7 +513,7 @@ export function TreeEditor({
             event.stopPropagation();
             if (childCount > 0) toggleCollapse(task.id);
           }}
-          aria-label={isCollapsed ? "展开" : "折叠"}
+          aria-label={isCollapsed ? t("展开") : t("折叠")}
         >
           {childCount > 0 ? (
             isCollapsed ? (
@@ -547,7 +551,7 @@ export function TreeEditor({
               <span
                 className="w-4 shrink-0 text-center text-[11px] leading-none"
                 style={{ opacity: inherited ? 0.75 : 1 }}
-                title={inherited ? "继承自父级" : "自定义图标"}
+                title={inherited ? t("继承自父级") : t("自定义图标")}
               >
                 {emoji}
               </span>
@@ -637,7 +641,9 @@ export function TreeEditor({
                   : "text-[var(--t3)]",
             ].join(" ")}
             title={
-              task.dueSource === "own" ? "自己的截止日" : `继承自 ${task.dueSource ?? "父任务"}`
+              task.dueSource === "own"
+                ? t("自己的截止日")
+                : t("继承自 {title}", { title: task.dueSource ?? t("父任务") })
             }
           >
             {dueLabel(task)}
@@ -656,9 +662,9 @@ export function TreeEditor({
   if (rows.length === 0) {
     return (
       <div className="px-4 py-10 text-center text-[11px] leading-relaxed text-[var(--t3)]">
-        {scopeId ? "这个节点还没有子任务。" : "还没有项目。"}
+        {scopeId ? t("这个节点还没有子任务。") : t("还没有项目。")}
         <br />
-        {scopeId ? "按 Enter 新建子任务。" : "点上方「项目」创建第一个。"}
+        {scopeId ? t("按 Enter 新建子任务。") : t("点上方「项目」创建第一个。")}
       </div>
     );
   }

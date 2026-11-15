@@ -1,13 +1,11 @@
 ﻿import { Search, SlidersHorizontal, X } from "lucide-react";
 import type { Board, TaskStatus } from "../data/types";
 import { EMPTY_FILTER } from "../data/types";
-import { useAppStore } from "../store/useAppStore";
+import { t } from "../lib/i18n";
+import { statusLabel, useAppStore } from "../store/useAppStore";
 
-const STATUS_OPTIONS: Array<{ value: TaskStatus; label: string }> = [
-  { value: "todo", label: "待办" },
-  { value: "doing", label: "进行中" },
-  { value: "done", label: "已完成" },
-];
+// 注意：label 必须在渲染时求值，不能放到模块级（否则切换语言不会更新）
+const STATUS_VALUES: TaskStatus[] = ["todo", "doing", "done"];
 
 interface FilterBarProps {
   hiddenCount: number;
@@ -39,7 +37,7 @@ export function FilterBar({ hiddenCount }: FilterBarProps) {
         <input
           value={filter.text}
           onChange={(event) => update({ text: event.target.value })}
-          placeholder="筛选标题 / 笔记…"
+          placeholder={t("筛选标题 / 笔记…")}
           className="min-w-0 flex-1 bg-transparent text-[var(--t1)] outline-none placeholder:text-[var(--t4)]"
         />
         {filter.text ? (
@@ -50,7 +48,8 @@ export function FilterBar({ hiddenCount }: FilterBarProps) {
       </label>
 
       <div className="flex h-8 items-center gap-0.5 rounded-lg border border-[var(--line)] bg-[var(--panel)] p-0.5">
-        {STATUS_OPTIONS.map((option) => {
+        {STATUS_VALUES.map((value) => {
+          const option = { value, label: statusLabel(value) };
           const active = filter.statuses.includes(option.value);
           return (
             <button
@@ -75,11 +74,11 @@ export function FilterBar({ hiddenCount }: FilterBarProps) {
         onChange={(event) => update({ due: event.target.value as typeof filter.due })}
         className="h-8 rounded-lg border border-[var(--line)] bg-[var(--panel)] px-2 text-[11px] text-[var(--t2)] outline-none"
       >
-        <option value="all">截止：全部</option>
-        <option value="overdue">截止：逾期</option>
-        <option value="today">截止：今天</option>
-        <option value="week">截止：本周</option>
-        <option value="none">截止：无</option>
+        <option value="all">{t("截止：全部")}</option>
+        <option value="overdue">{t("截止：逾期")}</option>
+        <option value="today">{t("截止：今天")}</option>
+        <option value="week">{t("截止：本周")}</option>
+        <option value="none">{t("截止：无")}</option>
       </select>
 
       <select
@@ -87,7 +86,7 @@ export function FilterBar({ hiddenCount }: FilterBarProps) {
         onChange={(event) => update({ tagIds: event.target.value ? [event.target.value] : [] })}
         className="h-8 max-w-[150px] rounded-lg border border-[var(--line)] bg-[var(--panel)] px-2 text-[11px] text-[var(--t2)] outline-none"
       >
-        <option value="">标签：全部</option>
+        <option value="">{t("标签：全部")}</option>
         {tags.map((tag) => (
           <option key={tag.id} value={tag.id}>
             {tag.name}
@@ -99,10 +98,10 @@ export function FilterBar({ hiddenCount }: FilterBarProps) {
         type="button"
         onClick={() => resetFilter(board)}
         className="flex h-8 items-center gap-1 rounded-lg border border-[var(--line)] bg-[var(--panel)] px-2.5 text-[11px] text-[var(--t3)] hover:text-[var(--t1)]"
-        title="清除筛选"
+        title={t("清除筛选")}
       >
         <SlidersHorizontal size={12} />
-        {activeCount > 0 ? `筛选 ${activeCount}` : "筛选"}
+        {activeCount > 0 ? t("筛选 {n}", { n: activeCount }) : t("筛选")}
       </button>
 
       {hiddenCount > 0 ? (
@@ -111,7 +110,7 @@ export function FilterBar({ hiddenCount }: FilterBarProps) {
           onClick={() => resetFilter(board)}
           className="text-[10px] text-[var(--t3)] hover:text-[var(--t2)]"
         >
-          已隐藏 {hiddenCount} 个
+          {t("已隐藏 {n} 个", { n: hiddenCount })}
         </button>
       ) : null}
     </div>

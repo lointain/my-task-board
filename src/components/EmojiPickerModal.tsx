@@ -1,4 +1,5 @@
 ﻿import { useMemo, useState } from "react";
+import { t } from "../lib/i18n";
 import { Modal } from "./Modal";
 
 const GROUPS: Array<{ name: string; emojis: string[] }> = [
@@ -43,8 +44,10 @@ export function EmojiPickerModal({ open, value, onPick, onClose }: EmojiPickerMo
   return (
     <Modal
       open={open}
-      title="选择图标"
-      subtitle={value ? `当前：${value}` : "每个节点都能单独设置；不设就继承父级"}
+      title={t("选择图标")}
+      subtitle={
+        value ? t("当前：{emoji}", { emoji: value }) : t("每个节点都能单独设置；不设就继承父级")
+      }
       onClose={onClose}
       width="max-w-xl"
       footer={
@@ -58,7 +61,7 @@ export function EmojiPickerModal({ open, value, onPick, onClose }: EmojiPickerMo
             }}
             className="mr-auto h-8 rounded-lg px-2.5 text-[11px] text-[var(--t3)] hover:bg-[var(--hover)] hover:text-[var(--t1)]"
           >
-            清除图标
+            {t("清除图标")}
           </button>
           <button
             type="button"
@@ -82,7 +85,7 @@ export function EmojiPickerModal({ open, value, onPick, onClose }: EmojiPickerMo
                 setQuery("");
               }
             }}
-            placeholder="也可以直接粘贴一个 emoji 后回车"
+            placeholder={t("也可以直接粘贴一个 emoji 后回车")}
             className="h-8 min-w-0 flex-1 rounded-lg border border-[var(--line)] bg-[var(--panel-2)] px-2.5 text-[12px] text-[var(--t1)] outline-none focus:border-accent-400/40"
           />
           <button
@@ -102,20 +105,20 @@ export function EmojiPickerModal({ open, value, onPick, onClose }: EmojiPickerMo
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="筛选分类（常用 / 工作 / 生活 / 符号）"
+          placeholder={t("筛选分类（常用 / 工作 / 生活 / 符号）")}
           className="h-7 w-full rounded-lg border border-[var(--line)] bg-[var(--panel)] px-2.5 text-[11px] text-[var(--t2)] outline-none"
         />
 
         <div className="max-h-[46vh] space-y-3 overflow-y-auto pr-1">
           {filtered.map((group) => (
-            <div key={group.name}>
+            <div key={t(group.name)}>
               <div className="mb-1.5 text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--t3)]">
-                {group.name}
+                {t(group.name)}
               </div>
               <div className="grid grid-cols-12 gap-0.5">
                 {group.emojis.map((emoji) => (
                   <button
-                    key={`${group.name}-${emoji}`}
+                    key={`${t(group.name)}-${emoji}`}
                     type="button"
                     onClick={() => {
                       onPick(emoji);

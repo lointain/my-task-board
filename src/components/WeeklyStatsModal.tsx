@@ -1,5 +1,6 @@
 ﻿import { CheckCircle2, Clock3, X } from "lucide-react";
 import type { Task } from "../data/types";
+import { t } from "../lib/i18n";
 import { useAppStore } from "../store/useAppStore";
 import { Modal } from "./Modal";
 
@@ -29,7 +30,7 @@ function StatsList({
           ) : (
             <Clock3 size={13} className="text-red-300" />
           )}
-          {tone === "done" ? "本周完成" : "逾期"}
+          {tone === "done" ? t("本周完成") : t("逾期")}
         </span>
         <span className="text-[10px] text-[var(--t3)]">{tasks.length}</span>
       </div>
@@ -73,11 +74,16 @@ export function WeeklyStatsModal({ open, onClose, onOpenTask }: WeeklyStatsModal
   return (
     <Modal
       open={open}
-      title="周统计"
+      title={t("周统计")}
       subtitle={
         stats
-          ? `${stats.weekStart} → ${stats.weekEnd} · 完成 ${stats.completedCount} · 逾期 ${stats.overdueCount}`
-          : "加载中…"
+          ? t("{start} → {end} · 完成 {done} · 逾期 {overdue}", {
+              start: stats.weekStart,
+              end: stats.weekEnd,
+              done: stats.completedCount,
+              overdue: stats.overdueCount,
+            })
+          : t("加载中…")
       }
       onClose={onClose}
       width="max-w-3xl"
@@ -85,27 +91,27 @@ export function WeeklyStatsModal({ open, onClose, onOpenTask }: WeeklyStatsModal
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <StatsList
           tasks={stats?.completed ?? []}
-          empty="本周还没有完成的任务"
+          empty={t("本周还没有完成的任务")}
           onOpenTask={onOpenTask}
           tone="done"
         />
         <StatsList
           tasks={stats?.overdue ?? []}
-          empty="没有逾期任务"
+          empty={t("没有逾期任务")}
           onOpenTask={onOpenTask}
           tone="overdue"
         />
       </div>
       <div className="mt-3 flex items-center gap-3 text-[10px] text-[var(--t3)]">
-        <span>自然周：周一 → 周日</span>
+        <span>{t("自然周：周一 → 周日")}</span>
         <span className="text-[var(--t5)]">|</span>
-        <span>完成倒序 / 逾期按截止日正序</span>
+        <span>{t("完成倒序 / 逾期按截止日正序")}</span>
         <button
           type="button"
           onClick={onClose}
           className="ml-auto flex items-center gap-1 text-[var(--t3)] hover:text-[var(--t2)]"
         >
-          <X size={11} /> 关闭
+          <X size={11} /> {t("关闭")}
         </button>
       </div>
     </Modal>

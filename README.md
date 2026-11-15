@@ -8,6 +8,14 @@
 
 ![TaskBoard 浅色主题](assets/shot-light.png)
 
+## 下载
+
+Windows x64（Win10/11，需要 WebView2）：
+
+- **安装版**：[TaskBoard_0.1.0_x64-setup.exe](https://github.com/lointain/my-task-board/releases/download/v0.1.0/TaskBoard_0.1.0_x64-setup.exe)（1.95 MB）
+- **免安装**：[taskboard.exe](https://github.com/lointain/my-task-board/releases/download/v0.1.0/taskboard.exe)（4.63 MB）
+- 全部版本：[Releases](https://github.com/lointain/my-task-board/releases)
+
 ## 现在能做什么
 
 - 任务树：项目 / 任务 / 子任务，标准 checkbox 级联完成，拖拽排序，右键拆解。

@@ -14,8 +14,8 @@ Light theme (toggle in the header):
 
 Windows x64 (Win10/11, WebView2 required):
 
-- **Installer**: [TaskBoard_0.1.0_x64-setup.exe](https://github.com/lointain/my-task-board/releases/download/v0.1.0/TaskBoard_0.1.0_x64-setup.exe) (1.95 MB)
-- **Portable**: [taskboard.exe](https://github.com/lointain/my-task-board/releases/download/v0.1.0/taskboard.exe) (4.63 MB)
+- **Installer**: [TaskBoard_0.1.1_x64-setup.exe](https://github.com/lointain/my-task-board/releases/download/v0.1.1/TaskBoard_0.1.1_x64-setup.exe) (1.95 MB)
+- **Portable**: [taskboard.exe](https://github.com/lointain/my-task-board/releases/download/v0.1.1/taskboard.exe) (4.63 MB)
 - All versions: [Releases](https://github.com/lointain/my-task-board/releases)
 
 ## What it does
@@ -111,3 +111,4 @@ Design documents live in `docs/20261114-01-任务面板/` (Chinese only): 01 ide
 ## License
 
 Personal project; use at your own risk.
+

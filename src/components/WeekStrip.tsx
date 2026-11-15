@@ -1,4 +1,4 @@
-﻿import type { Board } from "../data/types";
+import type { Board } from "../data/types";
 import { BOARD_LABEL, dateKey, weekDays } from "../lib/board";
 import { useDragStore } from "../lib/drag";
 import { t } from "../lib/i18n";

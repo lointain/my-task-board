@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "../lib/i18n";
 import { Modal } from "./Modal";
 

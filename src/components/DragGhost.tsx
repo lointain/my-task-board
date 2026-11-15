@@ -1,4 +1,4 @@
-﻿import { GripVertical } from "lucide-react";
+import { GripVertical } from "lucide-react";
 import { BOARD_LABEL } from "../lib/board";
 import { useDragStore } from "../lib/drag";
 import { t } from "../lib/i18n";

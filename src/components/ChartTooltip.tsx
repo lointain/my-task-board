@@ -1,4 +1,4 @@
-﻿import {
+import {
   AlertTriangle,
   CalendarClock,
   CheckSquare2,

@@ -1,4 +1,4 @@
-﻿import type { Board, Placement, Tag, TagGroup, Task } from "../data/types";
+import type { Board, Placement, Tag, TagGroup, Task } from "../data/types";
 import { t } from "./i18n";
 
 export const DAY_BOARDS: Board[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];

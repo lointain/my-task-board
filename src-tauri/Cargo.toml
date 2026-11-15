@@ -1,6 +1,6 @@
 [package]
 name = "taskboard"
-version = "0.1.0"
+version = "0.1.1"
 description = "Local-first four-quadrant task board"
 authors = ["you"]
 edition = "2024"
@@ -27,3 +27,4 @@ lto = true
 opt-level = "s"
 panic = "abort"
 strip = true
+

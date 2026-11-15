@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import type { Placement, Task } from "../data/types";
 import { t } from "../lib/i18n";
 import { useAppStore } from "../store/useAppStore";

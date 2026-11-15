@@ -1,4 +1,4 @@
-﻿export type QuadrantId = "q1" | "q2" | "q3" | "q4";
+export type QuadrantId = "q1" | "q2" | "q3" | "q4";
 
 export interface QuadrantMeta {
   id: QuadrantId;

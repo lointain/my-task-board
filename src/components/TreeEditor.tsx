@@ -1,4 +1,4 @@
-﻿import {
+import {
   CheckSquare2,
   ChevronDown,
   ChevronRight,

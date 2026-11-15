@@ -1,4 +1,4 @@
-﻿# TaskBoard
+# TaskBoard
 
 **简体中文** · [English](README.en.md)
 
@@ -14,8 +14,8 @@
 
 Windows x64（Win10/11，需要 WebView2）：
 
-- **安装版**：[TaskBoard_0.1.0_x64-setup.exe](https://github.com/lointain/my-task-board/releases/download/v0.1.0/TaskBoard_0.1.0_x64-setup.exe)（1.95 MB）
-- **免安装**：[taskboard.exe](https://github.com/lointain/my-task-board/releases/download/v0.1.0/taskboard.exe)（4.63 MB）
+- **安装版**：[TaskBoard_0.1.1_x64-setup.exe](https://github.com/lointain/my-task-board/releases/download/v0.1.1/TaskBoard_0.1.1_x64-setup.exe)（1.95 MB）
+- **免安装**：[taskboard.exe](https://github.com/lointain/my-task-board/releases/download/v0.1.1/taskboard.exe)（4.63 MB）
 - 全部版本：[Releases](https://github.com/lointain/my-task-board/releases)
 
 ## 现在能做什么
@@ -169,5 +169,6 @@ scripts/generate-icons.py # 生成 Tauri 图标与 favicon
 - [06 网络版规划](docs/20261114-01-任务面板/06-网络版规划.md)
 - [07 图表增强需求（v1.5 范围）](docs/20261114-01-任务面板/07-图表增强需求.md)
 - [08 图表增强候选归档](docs/20261114-01-任务面板/08-图表增强候选归档.md)
+
 
 

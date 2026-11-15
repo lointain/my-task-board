@@ -1,4 +1,4 @@
-﻿import { Database, Plus, Trash2 } from "lucide-react";
+import { Database, Plus, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { repo } from "../data/repository";
 import type { TagGroup } from "../data/types";

@@ -1,4 +1,4 @@
-﻿import { axisBottom, axisLeft } from "d3-axis";
+import { axisBottom, axisLeft } from "d3-axis";
 import { drag } from "d3-drag";
 import { scaleLinear } from "d3-scale";
 import { select } from "d3-selection";

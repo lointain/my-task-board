@@ -1,4 +1,4 @@
-﻿import { CheckCircle2, Clock3, X } from "lucide-react";
+import { CheckCircle2, Clock3, X } from "lucide-react";
 import type { Task } from "../data/types";
 import { t } from "../lib/i18n";
 import { useAppStore } from "../store/useAppStore";

@@ -1,4 +1,4 @@
-﻿import { X } from "lucide-react";
+import { X } from "lucide-react";
 import { type ReactNode, useEffect, useRef } from "react";
 import { t } from "../lib/i18n";
 

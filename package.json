@@ -1,7 +1,7 @@
 {
   "name": "taskboard",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -65,3 +65,4 @@
     "vitest": "^5.1.0"
   }
 }
+

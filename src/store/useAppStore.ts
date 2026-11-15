@@ -52,7 +52,7 @@ interface AppStore {
     vx: number;
     vy: number;
   }) => Promise<void>;
-  createProject: (title: string, color: string) => Promise<void>;
+  createProject: (title: string, color: string, emoji?: string) => Promise<void>;
   saveTagGroup: (input: {
     id?: string;
     name: string;
@@ -289,10 +289,10 @@ export const useAppStore = create<AppStore>((set, get) => ({
     }
   },
 
-  createProject: async (title, color) => {
+  createProject: async (title, color, emoji) => {
     try {
       if (!title.trim()) return;
-      await repo.taskCreate({ title: title.trim(), color });
+      await repo.taskCreate({ title: title.trim(), color, emoji: emoji ?? null });
       await get().reload();
     } catch (error) {
       set({ error: error instanceof Error ? error.message : String(error) });

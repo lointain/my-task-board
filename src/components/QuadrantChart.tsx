@@ -44,6 +44,8 @@ interface Entry {
   placement: Placement;
   task: Task;
   tagIds: string[];
+  emoji: string | null;
+  emojiInherited: boolean;
 }
 
 interface QuadrantChartProps {
@@ -58,6 +60,7 @@ interface QuadrantChartProps {
   onSelect: (id: string) => void;
   onOpenDetail: (id: string) => void;
   onMove: (taskId: string, x: number, y: number) => void;
+  onMomentum: (taskId: string, vx: number, vy: number) => void;
   onContextMenu: (taskId: string, x: number, y: number) => void;
 }
 
@@ -73,6 +76,7 @@ export function QuadrantChart({
   onSelect,
   onOpenDetail,
   onMove,
+  onMomentum,
   onContextMenu,
 }: QuadrantChartProps) {
   const svgRef = useRef<SVGSVGElement>(null);
@@ -94,6 +98,18 @@ export function QuadrantChart({
   }, []);
 
   const taskMap = useMemo(() => new Map(tasks.map((task) => [task.id, task])), [tasks]);
+  const childMap = useMemo(() => {
+    const map = new Map<string, Task[]>();
+    for (const task of tasks) {
+      if (!task.parentId) continue;
+      const list = map.get(task.parentId) ?? [];
+      list.push(task);
+      map.set(task.parentId, list);
+    }
+    return map;
+  }, [tasks]);
+
+  /** emoji：自己有就用，否则取最近祖先（渲染时用 entries 里预先算好的值） */
 
   const boardPlacements = useMemo(
     () => (board === "week" ? placements : placements.filter((p) => p.board === board)),
@@ -102,12 +118,30 @@ export function QuadrantChart({
 
   const entries = useMemo<Entry[]>(() => {
     const list: Entry[] = [];
+    const emojiFor = (task: Task): { emoji: string | null; inherited: boolean } => {
+      if (task.emoji) return { emoji: task.emoji, inherited: false };
+      let parent = task.parentId ? taskMap.get(task.parentId) : undefined;
+      const guard = new Set<string>();
+      while (parent && !guard.has(parent.id)) {
+        guard.add(parent.id);
+        if (parent.emoji) return { emoji: parent.emoji, inherited: true };
+        parent = parent.parentId ? taskMap.get(parent.parentId) : undefined;
+      }
+      return { emoji: null, inherited: false };
+    };
     for (const placement of boardPlacements) {
       const task = taskMap.get(placement.taskId);
       if (!task || task.status === "done" || task.status === "archived") continue;
       const ids = taskTags[task.id] ?? [];
       if (!matchesFilter(task, filter, ids)) continue;
-      list.push({ placement, task, tagIds: ids });
+      const emoji = emojiFor(task);
+      list.push({
+        placement,
+        task,
+        tagIds: ids,
+        emoji: emoji.emoji,
+        emojiInherited: emoji.inherited,
+      });
     }
     return list;
   }, [boardPlacements, taskMap, taskTags, filter]);
@@ -286,10 +320,162 @@ export function QuadrantChart({
     points
       .append("circle")
       .attr("class", "point-dot")
-      .attr("r", 5.5)
+      .attr("r", 6)
       .attr("fill", (d) => colorForTask(d.task, taskMap, d.tagIds, tags, settings))
-      .attr("stroke", "#0b0f14")
+      .attr("stroke", (d) => (isOverdue(d.task, dateKey(new Date())) ? "#f87171" : "#0b0f14"))
       .attr("stroke-width", 1.5);
+
+    // emoji：自己有就用，没有则取最近祖先
+    points
+      .filter((d) => Boolean(d.emoji))
+      .append("text")
+      .attr("class", "point-emoji")
+      .attr("text-anchor", "middle")
+      .attr("dominant-baseline", "central")
+      .attr("font-size", 9)
+      .attr("pointer-events", "none")
+      .attr("opacity", (d) => (d.emojiInherited ? 0.7 : 1))
+      .text((d) => d.emoji ?? "");
+
+    // 进度环：仅父节点
+    const ringR = 9;
+    const ringC = 2 * Math.PI * ringR;
+    const progressOf = (task: Task) => {
+      const kids = childMap.get(task.id) ?? [];
+      if (kids.length === 0) return null;
+      const done = kids.filter((kid) => kid.status === "done").length;
+      return done / kids.length;
+    };
+
+    points
+      .filter((d) => progressOf(d.task) !== null)
+      .append("circle")
+      .attr("class", "ring-track")
+      .attr("r", ringR)
+      .attr("fill", "none")
+      .attr("stroke", "rgba(255,255,255,0.12)")
+      .attr("stroke-width", 2);
+
+    points
+      .filter((d) => progressOf(d.task) !== null)
+      .append("circle")
+      .attr("class", "ring-arc")
+      .attr("r", ringR)
+      .attr("fill", "none")
+      .attr("stroke", (d) => colorForTask(d.task, taskMap, d.tagIds, tags, settings))
+      .attr("stroke-width", 2)
+      .attr("stroke-linecap", "round")
+      .attr("transform", "rotate(-90)")
+      .attr("stroke-dasharray", (d) => {
+        const p = progressOf(d.task) ?? 0;
+        return `${Math.max(0.001, p * ringC)} ${ringC}`;
+      });
+
+    // 动量：线段 + 每日刻度 + 虚影；逾期：左侧红尾巴
+    const showMomentum = settings.show_momentum !== "false";
+    const horizon = Number(settings.momentum_horizon_days ?? "7") || 7;
+    const pxPerUrgency = INNER_W / 100;
+    const pxPerImportance = INNER_H / 100;
+    const todayKey = dateKey(new Date());
+
+    const overdueDays = (task: Task) => {
+      if (!task.effectiveDue || task.effectiveDue >= todayKey) return 0;
+      const a = new Date(`${task.effectiveDue}T00:00:00`).getTime();
+      const b = new Date(`${todayKey}T00:00:00`).getTime();
+      return Math.max(0, Math.round((b - a) / 86_400_000));
+    };
+
+    if (showMomentum) {
+      points.each(function (d) {
+        const { vx, vy } = d.placement;
+        if (Math.hypot(vx, vy) <= 0.0001) return;
+        const group = select(this);
+        const ex = -vx * horizon * pxPerUrgency;
+        const ey = -vy * horizon * pxPerImportance;
+        const crossing = d.placement.x < 50 && d.placement.x + vx * horizon >= 50;
+        const color = crossing ? "#fbbf24" : "#94a3b8";
+
+        group
+          .append("line")
+          .attr("class", "momentum-line")
+          .attr("x1", 0)
+          .attr("y1", 0)
+          .attr("x2", ex)
+          .attr("y2", ey)
+          .attr("stroke", color)
+          .attr("stroke-width", 1)
+          .attr("stroke-opacity", 0.5)
+          .attr("pointer-events", "none");
+
+        const len = Math.hypot(ex, ey) || 1;
+        const nx = -ey / len;
+        const ny = ex / len;
+        for (let i = 1; i <= horizon; i += 1) {
+          const fx = (ex * i) / horizon;
+          const fy = (ey * i) / horizon;
+          group
+            .append("line")
+            .attr("class", "momentum-tick")
+            .attr("x1", fx - nx * 2.5)
+            .attr("y1", fy - ny * 2.5)
+            .attr("x2", fx + nx * 2.5)
+            .attr("y2", fy + ny * 2.5)
+            .attr("stroke", color)
+            .attr("stroke-opacity", 0.5)
+            .attr("stroke-width", 1)
+            .attr("pointer-events", "none");
+        }
+
+        group
+          .append("circle")
+          .attr("class", "momentum-ghost")
+          .attr("cx", ex)
+          .attr("cy", ey)
+          .attr("r", 4.2)
+          .attr("fill", "none")
+          .attr("stroke", color)
+          .attr("stroke-opacity", 0.45)
+          .attr("stroke-width", 1)
+          .attr("pointer-events", "none");
+      });
+
+      // 逾期尾巴：往更紧急一侧（像素 x 减小）延伸
+      const tails: Array<{ d: Entry; days: number }> = [];
+      points.each((d: Entry) => {
+        const days = overdueDays(d.task);
+        if (days > 0) tails.push({ d, days: Math.min(days, 30) });
+      });
+      const tailScale = 4; // 1 天 = 4px
+      root
+        .append("g")
+        .selectAll("line")
+        .data(tails)
+        .join("line")
+        .attr("class", "overdue-tail")
+        .attr("x1", (t) => x(t.d.placement.x))
+        .attr("y1", (t) => y(t.d.placement.y))
+        .attr("x2", (t) => Math.max(0, x(t.d.placement.x) - t.days * tailScale))
+        .attr("y2", (t) => y(t.d.placement.y))
+        .attr("stroke", "#f87171")
+        .attr("stroke-width", 2)
+        .attr("stroke-linecap", "round")
+        .attr("stroke-opacity", 0.75)
+        .attr("pointer-events", "none");
+
+      root
+        .append("g")
+        .selectAll("text")
+        .data(tails)
+        .join("text")
+        .attr("class", "overdue-label")
+        .attr("x", (t) => Math.max(2, x(t.d.placement.x) - t.days * tailScale - 4))
+        .attr("y", (t) => y(t.d.placement.y) - 6)
+        .attr("text-anchor", "start")
+        .attr("fill", "#f87171")
+        .attr("font-size", 9)
+        .attr("pointer-events", "none")
+        .text((t) => `逾期 ${t.days}d`);
+    }
 
     points
       .append("circle")
@@ -399,6 +585,7 @@ export function QuadrantChart({
     // selectedId 不放进依赖：点击选中不能重建 SVG，否则第二次点击会落在新节点上，双击失效
   }, [
     entries,
+    childMap,
     hiddenCount,
     onContextMenu,
     onMove,
@@ -408,6 +595,87 @@ export function QuadrantChart({
     tags,
     taskMap,
   ]);
+
+  // 选中后才出现“动量端点”手柄，单独一层，避免选中触发整图重建
+  useEffect(() => {
+    const svgEl = svgRef.current;
+    if (!svgEl) return;
+    const svg = select(svgEl);
+    svg.selectAll(".momentum-handle, .momentum-preview").remove();
+
+    if (!selectedId) return;
+    if (settings.show_momentum === "false") return;
+    const entry = entries.find((e) => e.task.id === selectedId);
+    if (!entry) return;
+
+    const horizon = Number(settings.momentum_horizon_days ?? "7") || 7;
+    const pxPerUrgency = INNER_W / 100;
+    const pxPerImportance = INNER_H / 100;
+    const { vx, vy } = entry.placement;
+    const startX = -vx * horizon * pxPerUrgency;
+    const startY = -vy * horizon * pxPerImportance;
+    const hasVector = Math.hypot(vx, vy) > 0.0001;
+
+    const group = svg
+      .selectAll<SVGGElement, Entry>("g.chart-point")
+      .filter((d) => d?.task.id === selectedId);
+    if (group.empty()) return;
+
+    const preview = group
+      .append("line")
+      .attr("class", "momentum-preview")
+      .attr("x1", 0)
+      .attr("y1", 0)
+      .attr("x2", startX)
+      .attr("y2", startY)
+      .attr("stroke", "#e2e8f0")
+      .attr("stroke-width", 1)
+      .attr("stroke-dasharray", "3 3")
+      .attr("opacity", 0.3)
+      .attr("pointer-events", "none");
+
+    const handle = group
+      .append("circle")
+      .attr("class", "momentum-handle")
+      .attr("cx", startX)
+      .attr("cy", startY)
+      .attr("r", 4)
+      .attr("fill", hasVector ? "#e2e8f0" : "transparent")
+      .attr("stroke", "#e2e8f0")
+      .attr("stroke-width", 1.2)
+      .attr("stroke-opacity", hasVector ? 1 : 0.6)
+      .attr("cursor", "crosshair")
+      .style("pointer-events", "all");
+
+    let moved = false;
+    let lastX = startX;
+    let lastY = startY;
+
+    handle.call(
+      drag<SVGCircleElement, Entry>()
+        .on("start", () => {
+          moved = false;
+        })
+        .on("drag", (event) => {
+          moved = true;
+          lastX = Math.max(-INNER_W, Math.min(INNER_W, event.x));
+          lastY = Math.max(-INNER_H, Math.min(INNER_H, event.y));
+          select(handle.node()).attr("cx", lastX).attr("cy", lastY).attr("fill", "#e2e8f0");
+          preview.attr("x2", lastX).attr("y2", lastY).attr("opacity", 0.6);
+        })
+        .on("end", () => {
+          if (!moved) return;
+          onMomentum(
+            entry.task.id,
+            Math.max(-5, Math.min(5, Math.round((-lastX / (horizon * pxPerUrgency)) * 100) / 100)),
+            Math.max(
+              -5,
+              Math.min(5, Math.round((-lastY / (horizon * pxPerImportance)) * 100) / 100),
+            ),
+          );
+        }),
+    );
+  }, [selectedId, entries, settings, onMomentum]);
 
   // 选中态单独更新
   useEffect(() => {

@@ -10,6 +10,7 @@ export interface Task {
   dueAt: string | null;
   recurrence: string | null;
   color: string | null;
+  emoji: string | null;
   sortOrder: number;
   noteJson: string | null;
   noteText: string | null;
@@ -90,6 +91,7 @@ export interface TaskCreateInput {
   title: string;
   parentId?: string | null;
   color?: string | null;
+  emoji?: string | null;
   afterId?: string | null;
 }
 
@@ -102,6 +104,7 @@ export interface TaskPatchInput {
   noteJson?: string;
   noteText?: string;
   color?: string;
+  emoji?: string;
 }
 
 export interface PlacementInput {

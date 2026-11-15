@@ -40,6 +40,7 @@ export default function App() {
   const setBoard = useAppStore((state) => state.setBoard);
   const placeTaskOn = useAppStore((state) => state.placeTaskOn);
   const movePlacement = useAppStore((state) => state.movePlacement);
+  const setMomentum = useAppStore((state) => state.setMomentum);
   const removePlacement = useAppStore((state) => state.removePlacement);
   const createTask = useAppStore((state) => state.createTask);
   const deleteTask = useAppStore((state) => state.deleteTask);
@@ -245,6 +246,9 @@ export default function App() {
               onSelect={select}
               onOpenDetail={setDetailId}
               onMove={(taskId, x, y) => void movePlacement(taskId, x, y)}
+              onMomentum={(taskId, vx, vy) =>
+                void setMomentum({ taskId, dueAt: null, mode: "manual", vx, vy })
+              }
               onContextMenu={(taskId, x, y) => setMenu({ taskId, x, y, source: "chart" })}
             />
           </section>

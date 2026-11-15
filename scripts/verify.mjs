@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 手动 E2E 冒烟脚本：需要先运行 `pnpm tauri dev`，
  * 并以 `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9222` 启动。
  *
@@ -81,7 +81,7 @@ check("拖入生成承诺点", (await pointIndex()) >= 0);
 // 4. 拖动点并验证持久化
 const point = await pointAt();
 const before = await point.getAttribute("transform");
-const circle = point.locator("circle").last();
+const circle = point.locator("circle.point-dot");
 const box = await circle.boundingBox();
 if (box) {
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
@@ -98,20 +98,20 @@ const reloaded = await (await pointAt()).getAttribute("transform");
 check("坐标持久化", reloaded === after);
 
 // 5. 详情 + 笔记（说明默认就在，不再需要“添加说明”）
-await (await pointAt()).locator("circle").last().dblclick({ force: true });
+await (await pointAt()).locator("circle.point-dot").dblclick({ force: true });
 await page.waitForTimeout(600);
 check("详情默认带说明编辑器", (await page.locator(".tiptap").count()) === 1);
 await page.locator(".tiptap").first().click();
 await page.locator(".tiptap").first().type("冒烟笔记");
 await page.getByRole("button", { name: "保存", exact: true }).click();
 await page.waitForTimeout(800);
-await (await pointAt()).locator("circle").last().dblclick({ force: true });
+await (await pointAt()).locator("circle.point-dot").dblclick({ force: true });
 await page.waitForTimeout(500);
 check("笔记保存", (await page.locator("body").innerText()).includes("冒烟笔记"));
 await page.getByRole("button", { name: "取消", exact: true }).click();
 
 // 6. 动量/截止日
-await (await pointAt()).locator("circle").last().click({ button: "right", force: true });
+await (await pointAt()).locator("circle.point-dot").click({ button: "right", force: true });
 await page.waitForTimeout(300);
 await page.getByRole("button", { name: "动量 / 截止日期", exact: true }).click();
 await page.waitForTimeout(300);
@@ -146,4 +146,5 @@ check("无运行时报错", errors.length === 0, errors.join(" | "));
 console.log(`\n${checks.filter((c) => c.ok).length}/${checks.length} 通过`);
 await browser.close();
 process.exitCode = checks.every((c) => c.ok) ? 0 : 1;
+
 

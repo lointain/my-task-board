@@ -517,6 +517,35 @@ export function TreeEditor({
 
         <span className="h-1.5 w-1.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />
 
+        {(() => {
+          const own = task.emoji;
+          let emoji = own;
+          let inherited = false;
+          if (!emoji && task.parentId) {
+            let parent = taskMap.get(task.parentId);
+            const guard = new Set<string>();
+            while (parent && !guard.has(parent.id)) {
+              guard.add(parent.id);
+              if (parent.emoji) {
+                emoji = parent.emoji;
+                inherited = true;
+                break;
+              }
+              parent = parent.parentId ? taskMap.get(parent.parentId) : undefined;
+            }
+          }
+          if (!emoji) return null;
+          return (
+            <span
+              className="w-4 shrink-0 text-center text-[11px] leading-none"
+              style={{ opacity: inherited ? 0.6 : 1 }}
+              title={inherited ? "继承自父级" : "自定义图标"}
+            >
+              {emoji}
+            </span>
+          );
+        })()}
+
         <input
           value={drafts[task.id] ?? task.title}
           onChange={(event) => setDrafts((prev) => ({ ...prev, [task.id]: event.target.value }))}

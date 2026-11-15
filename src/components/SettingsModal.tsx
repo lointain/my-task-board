@@ -26,6 +26,8 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
   const [tagDrafts, setTagDrafts] = useState<Record<string, string>>({});
   const [momentum, setMomentum] = useState("0.25");
   const [colorBy, setColorBy] = useState("project");
+  const [showMomentum, setShowMomentum] = useState(true);
+  const [horizon, setHorizon] = useState("7");
   const [dataDir, setDataDir] = useState("");
   const [backupPath, setBackupPath] = useState("");
 
@@ -33,6 +35,8 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
     if (!open) return;
     setMomentum(data?.settings.momentum_default ?? "0.25");
     setColorBy(data?.settings.color_by ?? "project");
+    setShowMomentum(data?.settings.show_momentum !== "false");
+    setHorizon(data?.settings.momentum_horizon_days ?? "7");
     void repo
       .dataDir()
       .then(setDataDir)
@@ -212,6 +216,38 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                 保存
               </button>
             </div>
+          </div>
+
+          <div className="rounded-xl border border-[var(--line)] bg-[var(--panel-2)] p-3">
+            <h3 className="text-xs font-medium text-slate-200">图上显示</h3>
+            <label className="mt-2 flex items-center gap-2 text-[11px] text-slate-300">
+              <input
+                type="checkbox"
+                checked={showMomentum}
+                onChange={(event) => {
+                  setShowMomentum(event.target.checked);
+                  void setSetting("show_momentum", event.target.checked ? "true" : "false");
+                }}
+              />
+              显示动量（线段、刻度、虚影、逾期尾巴）
+            </label>
+            <label className="mt-2 flex items-center gap-2 text-[11px] text-slate-300">
+              预测天数
+              <select
+                value={horizon}
+                onChange={(event) => {
+                  setHorizon(event.target.value);
+                  void setSetting("momentum_horizon_days", event.target.value);
+                }}
+                className="h-7 rounded-md border border-[var(--line)] bg-[var(--panel)] px-2 text-[11px] text-slate-300"
+              >
+                {["3", "7", "14"].map((value) => (
+                  <option key={value} value={value}>
+                    {value} 天
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
 
           <div className="rounded-xl border border-[var(--line)] bg-[var(--panel-2)] p-3">

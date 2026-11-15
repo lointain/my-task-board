@@ -214,6 +214,63 @@ check(
   `${beforeComplete} vs ${await placedTransform()}`,
 );
 
+// --- 进度环 / emoji / 动量手柄 ---
+const projectId2 = await treeIdOf(project);
+const projectGrip = page.locator(`[data-tree-row="${projectId2}"] [data-tree-grip]`);
+await projectGrip.scrollIntoViewIfNeeded();
+const pgBox = await projectGrip.boundingBox();
+const chartBox = await page.locator("svg[data-chart-svg]").boundingBox();
+if (pgBox && chartBox) {
+  await page.mouse.move(pgBox.x + pgBox.width / 2, pgBox.y + pgBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(pgBox.x + 4, pgBox.y + 12, { steps: 4 });
+  await page.mouse.move(chartBox.x + chartBox.width * 0.7, chartBox.y + chartBox.height * 0.7, {
+    steps: 12,
+  });
+  await page.waitForTimeout(200);
+  await page.mouse.up();
+  await page.waitForTimeout(1200);
+}
+check("父节点有进度环", (await page.locator(".ring-arc").count()) > 0);
+
+// 给项目设 emoji，图上应显示
+await page.locator(`[data-tree-row="${projectId2}"] input`).dblclick();
+await page.waitForTimeout(700);
+await page.getByRole("button", { name: "设置图标" }).click();
+await page.waitForTimeout(300);
+await page.getByRole("button", { name: "🚀", exact: true }).first().click();
+await page.waitForTimeout(800);
+const emojiShown = await page.evaluate(() =>
+  [...document.querySelectorAll(".point-emoji")].some((el) => el.textContent === "🚀"),
+);
+check("emoji 显示在点上", emojiShown);
+await page.getByRole("button", { name: "取消", exact: true }).click();
+await page.waitForTimeout(500);
+
+// 选中点 → 出现动量手柄，拖动改变向量
+const handlePoint = page.locator("g.chart-point").first();
+const dotBox = await handlePoint.locator("circle.point-dot").boundingBox();
+await page.mouse.click(dotBox.x + dotBox.width / 2, dotBox.y + dotBox.height / 2);
+await page.waitForTimeout(600);
+check("选中后出现动量手柄", (await page.locator(".momentum-handle").count()) === 1);
+const handleBox = await page.locator(".momentum-handle").boundingBox();
+const lineBefore = await page.evaluate(
+  () => document.querySelector(".chart-point .momentum-line")?.getAttribute("x2") ?? null,
+);
+if (handleBox) {
+  await page.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(handleBox.x + handleBox.width / 2 + 25, handleBox.y + handleBox.height / 2, {
+    steps: 8,
+  });
+  await page.mouse.up();
+  await page.waitForTimeout(1200);
+}
+const lineAfter = await page.evaluate(
+  () => document.querySelector(".chart-point .momentum-line")?.getAttribute("x2") ?? null,
+);
+check("拖动端点改变动量", lineBefore !== lineAfter, `${lineBefore} → ${lineAfter}`);
+
 // --- 输入框清空后按退格 = 删除该行 ---
 const childDId = await treeIdOf(childCName);
 const delInput = page.locator(`[data-tree-row="${childDId}"] input`);
@@ -230,7 +287,7 @@ check(
 
 // --- 悬浮 tooltip 有详情 ---
 const firstPoint = page.locator("g.chart-point").first();
-const firstCircle = await firstPoint.locator("circle").last().boundingBox();
+const firstCircle = await firstPoint.locator("circle.point-dot").boundingBox();
 await page.mouse.move(firstCircle.x + firstCircle.width / 2, firstCircle.y + firstCircle.height / 2);
 await page.waitForTimeout(500);
 const tipText = await page
@@ -309,3 +366,4 @@ check("无运行时报错", errors.length === 0, errors.join(" | "));
 console.log(`\n${checks.filter((c) => c.ok).length}/${checks.length} 通过`);
 await browser.close();
 process.exitCode = checks.every((c) => c.ok) ? 0 : 1;
+

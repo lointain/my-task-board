@@ -26,6 +26,27 @@ interface TaskDetailModalProps {
   onClose: () => void;
 }
 
+const EMOJI_CHOICES = [
+  "🚀",
+  "🎯",
+  "🧪",
+  "🛠️",
+  "📦",
+  "📝",
+  "🏠",
+  "💡",
+  "🔥",
+  "🌱",
+  "🧭",
+  "🗂️",
+  "📚",
+  "💼",
+  "🎨",
+  "🔬",
+  "☕",
+  "🏃",
+];
+
 function parseNote(noteJson: string | null) {
   if (!noteJson) return "";
   try {
@@ -152,14 +173,27 @@ export function TaskDetailModal({ task, onClose }: TaskDetailModalProps) {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [propsOpen, setPropsOpen] = useState(false);
+  const [emoji, setEmoji] = useState<string>(task?.emoji ?? "");
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const [emojiDraft, setEmojiDraft] = useState("");
 
   useEffect(() => {
     if (!task) return;
     setTitle(task.title);
     setStatus(task.status);
     setDueAt(task.dueAt ?? "");
+    setEmoji(task.emoji ?? "");
     setSelectedTags(taskTags[task.id] ?? []);
   }, [task, taskTags]);
+
+  const applyEmoji = async (value: string) => {
+    if (!task) return;
+    setEmoji(value);
+    setEmojiOpen(false);
+    setEmojiDraft("");
+    await repo.taskUpdate(task.id, { emoji: value });
+    await reload();
+  };
 
   const editor = useEditor(
     {
@@ -273,11 +307,53 @@ export function TaskDetailModal({ task, onClose }: TaskDetailModalProps) {
             <Check size={12} />
           </button>
           <div className="min-w-0 flex-1">
-            <input
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              className="w-full bg-transparent text-lg font-semibold tracking-tight text-slate-100 outline-none"
-            />
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setEmojiOpen((open) => !open)}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-[var(--line)] text-base hover:border-emerald-400/40"
+                title="设置图标"
+                aria-label="设置图标"
+              >
+                {emoji || "＋"}
+              </button>
+              <input
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                className="min-w-0 flex-1 bg-transparent text-lg font-semibold tracking-tight text-slate-100 outline-none"
+              />
+            </div>
+            {emojiOpen ? (
+              <div className="mt-2 flex flex-wrap items-center gap-1 rounded-lg border border-[var(--line)] bg-[var(--panel-2)] p-2">
+                {EMOJI_CHOICES.map((choice) => (
+                  <button
+                    key={choice}
+                    type="button"
+                    onClick={() => void applyEmoji(choice)}
+                    className="flex h-7 w-7 items-center justify-center rounded hover:bg-white/10"
+                  >
+                    {choice}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => void applyEmoji("")}
+                  className="ml-1 h-7 rounded px-2 text-[10px] text-slate-400 hover:bg-white/10 hover:text-slate-200"
+                >
+                  清除
+                </button>
+                <input
+                  value={emojiDraft}
+                  onChange={(event) => setEmojiDraft(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && emojiDraft.trim())
+                      void applyEmoji(emojiDraft.trim());
+                  }}
+                  placeholder="粘贴任意 emoji"
+                  className="h-7 w-28 rounded border border-[var(--line)] bg-[var(--panel)] px-2 text-[11px] text-slate-200 outline-none"
+                />
+              </div>
+            ) : null}
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <select
                 value={status}

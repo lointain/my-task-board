@@ -27,6 +27,7 @@ struct Task {
     due_at: Option<String>,
     recurrence: Option<String>,
     color: Option<String>,
+    emoji: Option<String>,
     sort_order: f64,
     note_json: Option<String>,
     note_text: Option<String>,
@@ -112,6 +113,7 @@ struct TaskCreate {
     title: String,
     parent_id: Option<String>,
     color: Option<String>,
+    emoji: Option<String>,
     /// 新建节点插到这个同级节点之后；为空则追加到末尾。
     after_id: Option<String>,
 }
@@ -127,6 +129,7 @@ struct TaskPatch {
     note_json: Option<String>,
     note_text: Option<String>,
     color: Option<String>,
+    emoji: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -249,6 +252,7 @@ fn init_db(path: &Path) -> Result<Connection, Box<dyn std::error::Error>> {
             due_at TEXT,
             recurrence TEXT,
             color TEXT,
+            emoji TEXT,
             sort_order REAL NOT NULL DEFAULT 0,
             note_json TEXT,
             note_text TEXT,
@@ -321,8 +325,24 @@ fn init_db(path: &Path) -> Result<Connection, Box<dyn std::error::Error>> {
         params![now],
     )?;
 
+    // v2：给已有库补 emoji 列（新库建表时已包含）
+    let has_emoji: bool = conn
+        .prepare("PRAGMA table_info(tasks)")?
+        .query_map([], |row| row.get::<_, String>(1))?
+        .filter_map(Result::ok)
+        .any(|name| name == "emoji");
+    if !has_emoji {
+        conn.execute_batch("ALTER TABLE tasks ADD COLUMN emoji TEXT;")?;
+    }
+    conn.execute(
+        "INSERT OR IGNORE INTO schema_migrations (version, applied_at) VALUES (2, ?1)",
+        params![now],
+    )?;
+
     for (key, value) in [
         ("momentum_default", "0.25"),
+        ("show_momentum", "true"),
+        ("momentum_horizon_days", "7"),
         ("color_by", "project"),
         ("theme", "dark"),
         ("week_starts_on", "mon"),
@@ -405,7 +425,7 @@ fn resolve_due(
 fn load_tasks(conn: &Connection) -> Result<Vec<Task>, String> {
     let mut stmt = conn
         .prepare(
-            "SELECT id, parent_id, title, status, due_at, recurrence, color, sort_order,
+            "SELECT id, parent_id, title, status, due_at, recurrence, color, emoji, sort_order,
                     note_json, note_text, created_at, updated_at, completed_at, deleted_at
              FROM tasks WHERE deleted_at IS NULL
              ORDER BY sort_order ASC, created_at ASC",
@@ -422,13 +442,14 @@ fn load_tasks(conn: &Connection) -> Result<Vec<Task>, String> {
                 due_at: row.get(4)?,
                 recurrence: row.get(5)?,
                 color: row.get(6)?,
-                sort_order: row.get(7)?,
-                note_json: row.get(8)?,
-                note_text: row.get(9)?,
-                created_at: row.get(10)?,
-                updated_at: row.get(11)?,
-                completed_at: row.get(12)?,
-                deleted_at: row.get(13)?,
+                emoji: row.get(7)?,
+                sort_order: row.get(8)?,
+                note_json: row.get(9)?,
+                note_text: row.get(10)?,
+                created_at: row.get(11)?,
+                updated_at: row.get(12)?,
+                completed_at: row.get(13)?,
+                deleted_at: row.get(14)?,
                 effective_due: None,
                 due_source: None,
             })
@@ -740,9 +761,17 @@ fn task_create(state: State<'_, AppState>, input: TaskCreate) -> Result<Task, St
     let now = now_iso();
     conn.execute(
         "INSERT INTO tasks
-         (id, owner_id, parent_id, title, status, sort_order, color, created_at, updated_at)
-         VALUES (?1, 'local', ?2, ?3, 'todo', ?4, ?5, ?6, ?6)",
-        params![id, input.parent_id, title, sort_order, input.color, now],
+         (id, owner_id, parent_id, title, status, sort_order, color, emoji, created_at, updated_at)
+         VALUES (?1, 'local', ?2, ?3, 'todo', ?4, ?5, ?6, ?7, ?7)",
+        params![
+            id,
+            input.parent_id,
+            title,
+            sort_order,
+            input.color,
+            input.emoji,
+            now
+        ],
     )
     .map_err(|e| e.to_string())?;
     load_tasks(&conn)?
@@ -798,6 +827,11 @@ fn task_update(state: State<'_, AppState>, id: String, patch: TaskPatch) -> Resu
         Some(v) => Some(v),
         None => current.color,
     };
+    let emoji = match patch.emoji {
+        Some(v) if v.trim().is_empty() => None,
+        Some(v) => Some(v.trim().to_string()),
+        None => current.emoji,
+    };
     let completed_at = if status == "done" {
         current.completed_at.or_else(|| Some(now_iso()))
     } else {
@@ -806,7 +840,7 @@ fn task_update(state: State<'_, AppState>, id: String, patch: TaskPatch) -> Resu
     let now = now_iso();
     conn.execute(
         "UPDATE tasks SET title=?2, status=?3, due_at=?4, parent_id=?5, sort_order=?6,
-         note_json=?7, note_text=?8, color=?9, completed_at=?10, updated_at=?11
+         note_json=?7, note_text=?8, color=?9, completed_at=?10, updated_at=?11, emoji=?12
          WHERE id=?1",
         params![
             id,
@@ -819,7 +853,8 @@ fn task_update(state: State<'_, AppState>, id: String, patch: TaskPatch) -> Resu
             note_text,
             color,
             completed_at,
-            now
+            now,
+            emoji
         ],
     )
     .map_err(|e| e.to_string())?;

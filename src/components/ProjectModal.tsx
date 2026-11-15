@@ -13,11 +13,13 @@ export function ProjectModal({ open, onClose }: ProjectModalProps) {
   const createProject = useAppStore((state) => state.createProject);
   const [title, setTitle] = useState("");
   const [color, setColor] = useState(COLORS[0]);
+  const [emoji, setEmoji] = useState("");
 
   useEffect(() => {
     if (open) {
       setTitle("");
       setColor(COLORS[0]);
+      setEmoji("");
     }
   }, [open]);
 
@@ -41,7 +43,7 @@ export function ProjectModal({ open, onClose }: ProjectModalProps) {
             type="button"
             onClick={() => {
               if (!title.trim()) return;
-              void createProject(title, color);
+              void createProject(title, color, emoji.trim() || undefined);
               onClose();
             }}
             className="h-8 rounded-lg bg-emerald-400 px-3 text-[11px] font-medium text-emerald-950 hover:bg-emerald-300"
@@ -60,12 +62,22 @@ export function ProjectModal({ open, onClose }: ProjectModalProps) {
             onChange={(event) => setTitle(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter" && title.trim()) {
-                void createProject(title, color);
+                void createProject(title, color, emoji.trim() || undefined);
                 onClose();
               }
             }}
             placeholder="例如：TaskBoard 开发"
             className="h-9 w-full rounded-lg border border-[var(--line)] bg-[var(--panel-2)] px-3 text-sm text-slate-200 outline-none focus:border-emerald-400/40"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1.5 block text-[11px] text-slate-400">图标（可选）</span>
+          <input
+            value={emoji}
+            onChange={(event) => setEmoji(event.target.value)}
+            placeholder="🚀 或任意 emoji"
+            maxLength={4}
+            className="h-9 w-24 rounded-lg border border-[var(--line)] bg-[var(--panel-2)] px-3 text-center text-sm text-slate-200 outline-none focus:border-emerald-400/40"
           />
         </label>
         <div>

@@ -112,7 +112,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                     </span>
                     {group.isFree ? (
                       <span className="rounded border border-accent-400/20 px-1 text-[9px] text-accent-300">
-                        自由
+                        {t("自由")}
                       </span>
                     ) : null}
                     <button
@@ -204,7 +204,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                   checked={groupFree}
                   onChange={(event) => setGroupFree(event.target.checked)}
                 />
-                自由输入
+                {t("自由输入")}
               </label>
               <button
                 type="button"
@@ -220,7 +220,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
                 }}
                 className="h-8 rounded-md bg-accent-400 px-3 text-[11px] font-medium text-accent-950 hover:bg-accent-300"
               >
-                新建组
+                {t("新建组")}
               </button>
             </div>
           </div>

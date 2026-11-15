@@ -334,6 +334,9 @@ const EN: Record<string, string> = {
   ERR_INVALID_MOMENTUM_MODE: "Invalid momentum mode",
   ERR_NOT_PLACED: "This task is not on the chart",
   ERR_INVALID_TAG_GROUP_MODE: "Tag group mode must be single or multi",
+  新建组: "New group",
+  自由: "Free",
+  自由输入: "Free input",
 };
 
 const ZH_OVERRIDE: Record<string, string> = {};

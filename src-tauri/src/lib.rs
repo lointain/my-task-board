@@ -691,6 +691,174 @@ fn refresh(conn: &Connection) -> Result<(), String> {
 }
 
 // ---------------------------------------------------------------------------
+// Soft delete / restore
+// ---------------------------------------------------------------------------
+
+/// 软删除整棵子树。保留 chart_placements，撤销删除时原坐标还在。
+fn soft_delete_subtree(conn: &Connection, id: &str) -> Result<(), String> {
+    let now = now_iso();
+    conn.execute(
+        "WITH RECURSIVE sub(id) AS (
+            SELECT id FROM tasks WHERE id = ?1
+            UNION ALL
+            SELECT t.id FROM tasks t JOIN sub s ON t.parent_id = s.id
+         )
+         UPDATE tasks SET deleted_at = ?2, updated_at = ?2
+         WHERE id IN (SELECT id FROM sub) AND deleted_at IS NULL",
+        params![id, now],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+/// 撤销软删除：把和根节点同一次删除的整棵子树恢复（比对 deleted_at 时间戳，
+/// 这样单独删过的子节点不会被误恢复）。
+fn restore_subtree(conn: &Connection, id: &str) -> Result<(), String> {
+    let stamp: Option<String> = conn
+        .query_row(
+            "SELECT deleted_at FROM tasks WHERE id = ?1",
+            params![id],
+            |row| row.get(0),
+        )
+        .optional()
+        .map_err(|e| e.to_string())?
+        .flatten();
+    let Some(stamp) = stamp else {
+        return Ok(());
+    };
+    conn.execute(
+        "WITH RECURSIVE sub(id) AS (
+            SELECT id FROM tasks WHERE id = ?1
+            UNION ALL
+            SELECT t.id FROM tasks t JOIN sub s ON t.parent_id = s.id
+         )
+         UPDATE tasks SET deleted_at = NULL, updated_at = ?3
+         WHERE id IN (SELECT id FROM sub) AND deleted_at = ?2",
+        params![id, stamp, now_iso()],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
+// Backups
+// ---------------------------------------------------------------------------
+
+const BACKUP_KEEP: usize = 14;
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct BackupEntry {
+    path: String,
+    created_at: String,
+    size: u64,
+}
+
+fn backups_dir(data_dir: &Path) -> PathBuf {
+    data_dir.join("backups")
+}
+
+/// 拼 `data.db` → `data.db-wal` 这种旁挂文件路径。
+fn sidecar(path: &Path, suffix: &str) -> PathBuf {
+    let mut s = path.as_os_str().to_os_string();
+    s.push(suffix);
+    PathBuf::from(s)
+}
+
+fn is_backup_file(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|n| n.to_str())
+        .is_some_and(|n| n.starts_with("data-") && n.ends_with(".db"))
+}
+
+/// 生成一份备份并清理超出保留份数的旧备份，返回新备份路径。
+fn create_backup(conn: &Connection, data_dir: &Path) -> Result<String, String> {
+    let dir = backups_dir(data_dir);
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let stamp = Local::now().format("%Y%m%d-%H%M%S-%3f").to_string();
+    let mut path = dir.join(format!("data-{stamp}.db"));
+    let mut n = 1;
+    while path.exists() {
+        path = dir.join(format!("data-{stamp}-{n}.db"));
+        n += 1;
+    }
+    // VACUUM INTO 要求目标文件不存在
+    conn.execute("VACUUM INTO ?1", params![path.to_string_lossy().to_string()])
+        .map_err(|e| e.to_string())?;
+    prune_backups(&dir, BACKUP_KEEP);
+    Ok(path.to_string_lossy().to_string())
+}
+
+/// 只保留最近 keep 份（文件名里的时间戳递增，字典序即时间序）。
+fn prune_backups(dir: &Path, keep: usize) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    let mut files: Vec<PathBuf> = entries
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| is_backup_file(p))
+        .collect();
+    files.sort();
+    let excess = files.len().saturating_sub(keep);
+    for f in files.into_iter().take(excess) {
+        let _ = std::fs::remove_file(f);
+    }
+}
+
+fn list_backups(data_dir: &Path) -> Vec<BackupEntry> {
+    let dir = backups_dir(data_dir);
+    let Ok(entries) = std::fs::read_dir(&dir) else {
+        return Vec::new();
+    };
+    let mut out: Vec<BackupEntry> = entries
+        .flatten()
+        .filter_map(|e| {
+            let path = e.path();
+            if !is_backup_file(&path) {
+                return None;
+            }
+            let meta = e.metadata().ok()?;
+            if !meta.is_file() {
+                return None;
+            }
+            let created_at = meta
+                .modified()
+                .ok()
+                .map(|t| DateTime::<Utc>::from(t).to_rfc3339_opts(SecondsFormat::Secs, true))
+                .unwrap_or_default();
+            Some(BackupEntry {
+                path: path.to_string_lossy().to_string(),
+                created_at,
+                size: meta.len(),
+            })
+        })
+        .collect();
+    out.sort_by(|a, b| b.created_at.cmp(&a.created_at).then_with(|| b.path.cmp(&a.path)));
+    out
+}
+
+fn backup_due(conn: &Connection) -> Result<bool, String> {
+    let settings = load_settings(conn)?;
+    Ok(match settings.get("last_backup_at") {
+        None => true,
+        Some(v) => DateTime::parse_from_rfc3339(v)
+            .map(|t| (Utc::now() - t.with_timezone(&Utc)).num_hours() >= 24)
+            .unwrap_or(true),
+    })
+}
+
+fn mark_backup_done(conn: &Connection) -> Result<(), String> {
+    conn.execute(
+        "INSERT INTO settings (owner_id, key, value) VALUES ('local', 'last_backup_at', ?1)
+         ON CONFLICT(owner_id, key) DO UPDATE SET value=excluded.value",
+        params![now_iso()],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+// ---------------------------------------------------------------------------
 // Commands
 // ---------------------------------------------------------------------------
 
@@ -710,10 +878,8 @@ fn bootstrap(state: State<'_, AppState>) -> Result<AppData, String> {
 #[tauri::command]
 fn task_create(state: State<'_, AppState>, input: TaskCreate) -> Result<Task, String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    // P2：允许空标题（树里新建节点先用占位符，失焦仍为空才删除），只做去空格
     let title = input.title.trim().to_string();
-    if title.is_empty() {
-        return Err("ERR_EMPTY_TITLE".into());
-    }
     if let Some(parent) = input.parent_id.as_deref() {
         let exists: i64 = conn
             .query_row(
@@ -915,29 +1081,13 @@ fn task_complete(state: State<'_, AppState>, id: String, done: bool) -> Result<(
 #[tauri::command]
 fn task_delete(state: State<'_, AppState>, id: String) -> Result<(), String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
-    let now = now_iso();
-    conn.execute(
-        "WITH RECURSIVE sub(id) AS (
-            SELECT id FROM tasks WHERE id = ?1
-            UNION ALL
-            SELECT t.id FROM tasks t JOIN sub s ON t.parent_id = s.id
-         )
-         UPDATE tasks SET deleted_at = ?2, updated_at = ?2
-         WHERE id IN (SELECT id FROM sub) AND deleted_at IS NULL",
-        params![id, now],
-    )
-    .map_err(|e| e.to_string())?;
-    conn.execute(
-        "WITH RECURSIVE sub(id) AS (
-            SELECT id FROM tasks WHERE id = ?1
-            UNION ALL
-            SELECT t.id FROM tasks t JOIN sub s ON t.parent_id = s.id
-         )
-         DELETE FROM chart_placements WHERE task_id IN (SELECT id FROM sub)",
-        params![id],
-    )
-    .map_err(|e| e.to_string())?;
-    Ok(())
+    soft_delete_subtree(&conn, &id)
+}
+
+#[tauri::command]
+fn task_restore(state: State<'_, AppState>, id: String) -> Result<(), String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    restore_subtree(&conn, &id)
 }
 
 #[tauri::command]
@@ -1302,14 +1452,77 @@ fn settings_set(
 #[tauri::command]
 fn backup_now(state: State<'_, AppState>) -> Result<String, String> {
     let conn = state.conn.lock().map_err(|e| e.to_string())?;
-    let dir = state.data_dir.join("backups");
-    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
-    let stamp = Local::now().format("%Y%m%d-%H%M%S").to_string();
-    let path = dir.join(format!("data-{stamp}.db"));
-    let path_s = path.to_string_lossy().to_string();
-    conn.execute("VACUUM INTO ?1", params![path_s])
+    let path = create_backup(&conn, &state.data_dir)?;
+    mark_backup_done(&conn)?;
+    Ok(path)
+}
+
+/// 启动时的静默自动备份：距上次超过 24 小时才动手，返回新备份路径（或 None）。
+#[tauri::command]
+fn backup_auto(state: State<'_, AppState>) -> Result<Option<String>, String> {
+    let conn = state.conn.lock().map_err(|e| e.to_string())?;
+    if !backup_due(&conn)? {
+        return Ok(None);
+    }
+    let path = create_backup(&conn, &state.data_dir)?;
+    mark_backup_done(&conn)?;
+    Ok(Some(path))
+}
+
+#[tauri::command]
+fn backup_list(state: State<'_, AppState>) -> Result<Vec<BackupEntry>, String> {
+    Ok(list_backups(&state.data_dir))
+}
+
+/// 用备份覆盖当前库。先关连接再替换文件，避免 WAL 盖掉恢复结果；
+/// 替换前把当前库 VACUUM 到 `data.db.before-restore` 作为回滚点。
+#[tauri::command]
+fn backup_restore(state: State<'_, AppState>, path: String) -> Result<(), String> {
+    let src = PathBuf::from(&path);
+    if !src.is_file() {
+        return Err("ERR_BACKUP_NOT_FOUND".into());
+    }
+    let data_dir = state.data_dir.clone();
+    let db_path = data_dir.join("data.db");
+    let mut guard = state.conn.lock().map_err(|e| e.to_string())?;
+
+    // 用内存库顶替，取走真实连接，确保替换文件前 data.db 不再被任何句柄占用
+    let placeholder = Connection::open_in_memory().map_err(|e| e.to_string())?;
+    let mut old = Some(std::mem::replace(&mut *guard, placeholder));
+
+    let result = (|| -> Result<(), String> {
+        let conn = old.take().ok_or_else(|| "ERR_RESTORE_STATE".to_string())?;
+        let _ = conn.query_row("PRAGMA wal_checkpoint(TRUNCATE)", [], |_| Ok(()));
+        let before = data_dir.join("data.db.before-restore");
+        let _ = std::fs::remove_file(&before);
+        conn.execute(
+            "VACUUM INTO ?1",
+            params![before.to_string_lossy().to_string()],
+        )
         .map_err(|e| e.to_string())?;
-    Ok(path.to_string_lossy().to_string())
+        conn.close().map_err(|(_, e)| e.to_string())?;
+        std::fs::copy(&src, &db_path).map_err(|e| e.to_string())?;
+        let _ = std::fs::remove_file(sidecar(&db_path, "-wal"));
+        let _ = std::fs::remove_file(sidecar(&db_path, "-shm"));
+        Ok(())
+    })();
+
+    // 无论成败都把连接换回来，保证应用仍能继续用
+    match init_db(&db_path) {
+        Ok(conn) => {
+            *guard = conn;
+            result
+        }
+        Err(e) => Err(match result {
+            Ok(()) => e.to_string(),
+            Err(r) => format!("{r}; reopen failed: {e}"),
+        }),
+    }
+}
+
+#[tauri::command]
+fn app_restart(app: tauri::AppHandle) {
+    app.restart();
 }
 
 #[tauri::command]
@@ -1331,6 +1544,10 @@ pub fn run() {
             let db_path = data_dir.join("data.db");
             let conn = init_db(&db_path)?;
             let _ = refresh(&conn);
+            // 静默自动备份：距上次超过 24 小时才动手
+            if backup_due(&conn).unwrap_or(false) && create_backup(&conn, &data_dir).is_ok() {
+                let _ = mark_backup_done(&conn);
+            }
             app.manage(AppState {
                 conn: Mutex::new(conn),
                 data_dir,
@@ -1344,6 +1561,7 @@ pub fn run() {
             task_update,
             task_complete,
             task_delete,
+            task_restore,
             placement_upsert,
             placement_remove,
             placement_set_momentum,
@@ -1357,6 +1575,10 @@ pub fn run() {
             stats_week,
             settings_set,
             backup_now,
+            backup_auto,
+            backup_list,
+            backup_restore,
+            app_restart,
             data_dir
         ])
         .run(tauri::generate_context!())
@@ -1453,6 +1675,120 @@ mod tests {
             .to_string();
         let vx = calc_auto_vx(40.0, &due);
         assert!((vx - 6.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn soft_delete_and_restore_keep_subtree_and_placement() {
+        let (conn, path) = temp_conn();
+        let now = now_iso();
+        conn.execute(
+            "INSERT INTO tasks (id, owner_id, title, status, created_at, updated_at)
+             VALUES ('p', 'local', 'Parent', 'todo', ?1, ?1)",
+            params![now],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO tasks (id, owner_id, parent_id, title, status, created_at, updated_at)
+             VALUES ('c', 'local', 'p', 'Child', 'todo', ?1, ?1)",
+            params![now],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO chart_placements
+             (id, task_id, board, scheduled_date, x, y, momentum_mode, vx, vy,
+              momentum_updated_at, created_at, updated_at)
+             VALUES ('pl', 'c', 'week', NULL, 10, 20, 'manual', 0.25, 0, ?1, ?1, ?1)",
+            params![now],
+        )
+        .unwrap();
+
+        soft_delete_subtree(&conn, "p").unwrap();
+        assert!(load_tasks(&conn).unwrap().is_empty(), "整棵子树都应不可见");
+        assert!(load_placements(&conn).unwrap().is_empty());
+        let kept: i64 = conn
+            .query_row("SELECT COUNT(*) FROM chart_placements", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(kept, 1, "软删除应保留 placement，供撤销恢复");
+
+        restore_subtree(&conn, "p").unwrap();
+        assert_eq!(load_tasks(&conn).unwrap().len(), 2);
+        assert_eq!(load_placements(&conn).unwrap().len(), 1);
+
+        drop(conn);
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn restore_does_not_revive_separately_deleted_child() {
+        let (conn, path) = temp_conn();
+        let now = now_iso();
+        for (id, parent) in [("p", None), ("c", Some("p"))] {
+            conn.execute(
+                "INSERT INTO tasks (id, owner_id, parent_id, title, status, created_at, updated_at)
+                 VALUES (?1, 'local', ?2, 'T', 'todo', ?3, ?3)",
+                params![id, parent, now],
+            )
+            .unwrap();
+        }
+        // 先单独删掉子节点，再删父节点
+        soft_delete_subtree(&conn, "c").unwrap();
+        // now_iso 是毫秒精度，两次删除可能落在同一毫秒；显式错开时间戳，测的是比对逻辑
+        conn.execute(
+            "UPDATE tasks SET deleted_at = '2000-01-01T00:00:00.000Z' WHERE id = 'c'",
+            [],
+        )
+        .unwrap();
+        soft_delete_subtree(&conn, "p").unwrap();
+        restore_subtree(&conn, "p").unwrap();
+
+        let visible = load_tasks(&conn).unwrap();
+        assert_eq!(visible.len(), 1);
+        assert_eq!(visible[0].id, "p", "只恢复这一次删除的父节点，子节点保持删除");
+
+        drop(conn);
+        let _ = std::fs::remove_file(path);
+    }
+
+    #[test]
+    fn prune_backups_keeps_newest_and_ignores_other_files() {
+        let dir = std::env::temp_dir().join(format!("taskboard-bk-{}", Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        for i in 0..5 {
+            std::fs::write(dir.join(format!("data-2026010{i}-000000.db")), b"x").unwrap();
+        }
+        std::fs::write(dir.join("data.db.before-restore"), b"x").unwrap();
+
+        prune_backups(&dir, 2);
+        let mut names: Vec<String> = std::fs::read_dir(&dir)
+            .unwrap()
+            .flatten()
+            .map(|e| e.file_name().to_string_lossy().to_string())
+            .filter(|n| n.starts_with("data-") && n.ends_with(".db"))
+            .collect();
+        names.sort();
+        assert_eq!(names.len(), 2);
+        assert!(names[0].contains("20260103"));
+        assert!(names[1].contains("20260104"));
+        assert!(dir.join("data.db.before-restore").exists());
+
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn backup_due_respects_24h_interval() {
+        let (conn, path) = temp_conn();
+        assert!(backup_due(&conn).unwrap(), "首次启动应触发备份");
+        mark_backup_done(&conn).unwrap();
+        assert!(!backup_due(&conn).unwrap(), "刚备份过不应再触发");
+        conn.execute(
+            "UPDATE settings SET value = '2000-01-01T00:00:00Z' WHERE key = 'last_backup_at'",
+            [],
+        )
+        .unwrap();
+        assert!(backup_due(&conn).unwrap(), "超过 24 小时应触发");
+
+        drop(conn);
+        let _ = std::fs::remove_file(path);
     }
 }
 

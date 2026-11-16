@@ -50,7 +50,15 @@ const projectId = await treeIdOf(project);
 await page.locator(`[data-tree-row="${projectId}"] input`).click();
 await page.keyboard.press("Enter");
 await page.waitForTimeout(700);
-check("回车新建子任务", (await treeTitles()).includes("新任务"));
+check(
+  "回车新建子任务（空标题 + 占位提示）",
+  await page.evaluate(() => {
+    const el = document.activeElement;
+    return (
+      el instanceof HTMLInputElement && el.value === "" && el.placeholder === "新任务"
+    );
+  }),
+);
 await page.keyboard.type(childAName);
 await page.keyboard.press("Enter");
 await page.waitForTimeout(700);
@@ -409,6 +417,223 @@ await page.keyboard.press("Escape");
 await page.waitForTimeout(600);
 const zhText = await page.locator("body").innerText();
 check("切回中文", zhText.includes("周统计") && zhText.includes("项目"), zhText.slice(0, 60));
+
+// ===== v0.2 体验优化：A1 / A2 / A3 / A4 / A5 / P1 / P4 =====
+const weekdays = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
+const todayIdx = ((new Date().getDay() + 6) % 7) + 1;
+const emptyIdx = [1, 2, 3, 4, 5, 6].find((index) => index !== todayIdx) ?? 1;
+const blurAll = () => page.evaluate(() => document.activeElement?.blur?.());
+const focusChart = () =>
+  page.evaluate(() => document.querySelector("[data-drop-chart]")?.focus());
+const pointXY = (id) =>
+  page.$$eval(
+    "g.chart-point",
+    (els, taskId) => {
+      const el = els.find((item) => item.getAttribute("data-task-id") === taskId);
+      const match = /translate\((-?[\d.]+),\s*(-?[\d.]+)\)/.exec(
+        el?.getAttribute("transform") ?? "",
+      );
+      return match ? { x: Number(match[1]), y: Number(match[2]) } : null;
+    },
+    id,
+  );
+const dotBoxOf = (id) =>
+  page.locator(`g.chart-point[data-task-id="${id}"] circle.point-dot`).boundingBox();
+const toastText = () =>
+  page
+    .locator("div.fixed.bottom-12")
+    .first()
+    .innerText()
+    .catch(() => "");
+
+// A3：数字键回到「今天」的板（childA 的承诺点在这张板上）
+await blurAll();
+await page.keyboard.press(String(todayIdx));
+await page.waitForTimeout(800);
+const todayTitle = await page.locator("h1").first().innerText();
+check("A3 数字键切到今天的板", todayTitle.includes(weekdays[todayIdx - 1]), todayTitle);
+
+// --- A2：方向键改动坐标 ---
+await page.mouse.move(5, 5);
+await page.waitForTimeout(250);
+const aDotBox = await dotBoxOf(childAId);
+check("A2 前置：childA 的承诺点在图上", Boolean(aDotBox));
+if (aDotBox) {
+  await page.mouse.click(aDotBox.x + aDotBox.width / 2, aDotBox.y + aDotBox.height / 2);
+  await page.waitForTimeout(500);
+  await focusChart();
+  const xy0 = await pointXY(childAId);
+
+  await page.keyboard.press("ArrowRight");
+  await page.waitForTimeout(700);
+  const xy1 = await pointXY(childAId);
+  // 横轴 100 在左：紧迫度 +1 → 像素 x 变小
+  check(
+    "A2 → 提高紧迫度",
+    Boolean(xy0 && xy1 && xy1.x < xy0.x),
+    `${JSON.stringify(xy0)} → ${JSON.stringify(xy1)}`,
+  );
+
+  // --- A1：Ctrl+Z 撤销坐标改动 ---
+  await focusChart();
+  await page.keyboard.press("Control+z");
+  await page.waitForTimeout(900);
+  const xyUndo = await pointXY(childAId);
+  check(
+    "A1 Ctrl+Z 撤销回原坐标",
+    Boolean(xy0 && xyUndo && xyUndo.x === xy0.x && xyUndo.y === xy0.y),
+    `${JSON.stringify(xy0)} vs ${JSON.stringify(xyUndo)}`,
+  );
+  check("A1 撤销 toast", (await toastText()).includes("已撤销"), await toastText());
+
+  // --- A2：↑ 提高重要度，再撤销 ---
+  await focusChart();
+  await page.keyboard.press("ArrowUp");
+  await page.waitForTimeout(700);
+  const xy2 = await pointXY(childAId);
+  check(
+    "A2 ↑ 提高重要度",
+    Boolean(xy0 && xy2 && xy2.y < xy0.y),
+    `${JSON.stringify(xy0)} → ${JSON.stringify(xy2)}`,
+  );
+  await focusChart();
+  await page.keyboard.press("Control+z");
+  await page.waitForTimeout(900);
+  check("A1 撤销 ↑ 改动", (await pointXY(childAId))?.y === xy0?.y);
+
+  // --- P1：面板可贴右边缘 ---
+  const chartBox2 = await page.locator("[data-drop-chart]").first().boundingBox();
+  const pinBtn = page.locator('div.absolute.z-30 button[title="贴右边缘"]').first();
+  check("P1 面板出现「贴右边缘」按钮", (await pinBtn.count()) === 1);
+  await pinBtn.click();
+  await page.waitForTimeout(400);
+  const panelBox = await page.locator("div.absolute.z-30").first().boundingBox();
+  check(
+    "P1 贴边后按钮变「取消贴边」且面板靠右",
+    (await page.locator('div.absolute.z-30 button[title="取消贴边"]').count()) === 1 &&
+      Boolean(panelBox && chartBox2 && panelBox.x > chartBox2.x + chartBox2.width * 0.5),
+    `panelX=${panelBox?.x} chartRight=${chartBox2 ? chartBox2.x + chartBox2.width : "?"}`,
+  );
+
+  // --- A2：Delete 从图上移除 + A1 撤销恢复 ---
+  await focusChart();
+  await page.keyboard.press("Delete");
+  await page.waitForTimeout(800);
+  check("A2 Delete 把点移出图", (await pointXY(childAId)) === null);
+  await focusChart();
+  await page.keyboard.press("Control+z");
+  await page.waitForTimeout(900);
+  check("A1 撤销 Delete 恢复点位", (await pointXY(childAId))?.x === xy0?.x);
+
+  // --- A4：把已在图上的节点从任务树拖到图外 = 取消承诺 ---
+  const gripA = page.locator(`[data-tree-row="${childAId}"] [data-tree-grip]`);
+  await gripA.scrollIntoViewIfNeeded();
+  const gripABox = await gripA.boundingBox();
+  const viewportH = await page.evaluate(() => window.innerHeight);
+  if (gripABox) {
+    await page.mouse.move(gripABox.x + gripABox.width / 2, gripABox.y + gripABox.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(gripABox.x + 4, gripABox.y + 12, { steps: 4 });
+    await page.mouse.move(140, viewportH - 14, { steps: 12 });
+    await page.waitForTimeout(250);
+    await page.mouse.up();
+    await page.waitForTimeout(900);
+  }
+  check("A4 拖到图外取消承诺", (await pointXY(childAId)) === null);
+  check("A4 提示已从图上移除", (await toastText()).includes("已从图上移除"), await toastText());
+  await page.keyboard.press("Control+z");
+  await page.waitForTimeout(900);
+  check("A1 撤销拖出图", (await pointXY(childAId)) !== null);
+}
+
+// --- A5：已完成 / 已归档抽屉 ---
+await blurAll();
+await page.locator(`[data-tree-row="${childAId}"] button`).first().click();
+await page.waitForTimeout(1000);
+await page.locator('button[title="已完成 / 已归档"]').click();
+await page.waitForTimeout(600);
+const drawer = page.locator("div.fixed.inset-0.z-40 aside");
+const drawerText = await drawer.innerText().catch(() => "");
+check(
+  "A5 抽屉列出已完成 + 本周计数",
+  drawerText.includes("本周完成") && drawerText.includes(childAName),
+  drawerText.replace(/\n/g, " | ").slice(0, 100),
+);
+check(
+  "A5 行内有取消完成 / 打开详情",
+  drawerText.includes("取消完成") && drawerText.includes("打开详情"),
+);
+const doneRowsBefore = await drawer.getByRole("button", { name: "取消完成" }).count();
+await drawer.getByRole("button", { name: "取消完成" }).first().click();
+await page.waitForTimeout(1000);
+const doneRowsAfter = await drawer.getByRole("button", { name: "取消完成" }).count();
+check(
+  "A5 取消完成后该行从列表消失",
+  doneRowsAfter === doneRowsBefore - 1,
+  `${doneRowsBefore} → ${doneRowsAfter}`,
+);
+await page.keyboard.press("Escape");
+await page.waitForTimeout(500);
+check("A5 Esc 关闭抽屉", (await page.locator("div.fixed.inset-0.z-40 aside").count()) === 0);
+
+// --- A3 + P4：数字键切到空板，显示三步引导 ---
+await blurAll();
+await page.keyboard.press(String(emptyIdx));
+await page.waitForTimeout(800);
+const emptyTitle = await page.locator("h1").first().innerText();
+check("A3 数字键切到空板", emptyTitle.includes(weekdays[emptyIdx - 1]), emptyTitle);
+const emptyGuide = await page.locator("[data-drop-chart]").first().innerText();
+check(
+  "P4 空板显示三步引导",
+  emptyGuide.includes("这张图还没有任务") &&
+    emptyGuide.includes("从右侧任务树拖一个节点进来") &&
+    emptyGuide.includes("落点决定象限"),
+  emptyGuide.replace(/\n/g, " | ").slice(0, 120),
+);
+const sampleBtnCount = await page.locator('button:has-text("试试示例数据")').count();
+const hasTasksNow = (await treeTitles()).length > 0;
+check(
+  "P4 仅空库时才给示例数据按钮",
+  hasTasksNow ? sampleBtnCount === 0 : sampleBtnCount === 1,
+  `hasTasks=${hasTasksNow} buttons=${sampleBtnCount}`,
+);
+
+// --- P3：每张板的筛选持久化（切板往返 + 刷新落到 settings）---
+await blurAll();
+const filterInput = page.locator('input[placeholder="筛选标题 / 笔记…"]').first();
+const marker = `筛选${Date.now().toString().slice(-4)}`;
+await page.keyboard.press("5");
+await page.waitForTimeout(700);
+await filterInput.fill(marker);
+await page.waitForTimeout(500);
+check(
+  "P3 周五板可写入筛选",
+  (await filterInput.inputValue()) === marker,
+  await filterInput.inputValue(),
+);
+await blurAll();
+await page.keyboard.press("3");
+await page.waitForTimeout(700);
+const wedVal = await filterInput.inputValue();
+await blurAll();
+await page.keyboard.press("5");
+await page.waitForTimeout(700);
+const backVal = await filterInput.inputValue();
+check(
+  "P3 切板往返后筛选各板独立保留",
+  wedVal === "" && backVal === marker,
+  `周三="${wedVal}" 周五="${backVal}"`,
+);
+await page.reload();
+await page.waitForTimeout(1500);
+await blurAll();
+await page.keyboard.press("5");
+await page.waitForTimeout(800);
+const reloadVal = await filterInput.inputValue();
+check("P3 刷新后筛选仍在（已落盘 settings）", reloadVal === marker, reloadVal);
+await page.locator('button[title="清除筛选"]').first().click();
+await page.waitForTimeout(400);
+check("P3 清除筛选", (await filterInput.inputValue()) === "", await filterInput.inputValue());
 
 check("无运行时报错", errors.length === 0, errors.join(" | "));
 

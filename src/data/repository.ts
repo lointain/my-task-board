@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
   AppData,
+  BackupEntry,
   MomentumInput,
   Placement,
   PlacementInput,
@@ -19,6 +20,7 @@ export const repo = {
   taskUpdate: (id: string, patch: TaskPatchInput) => invoke<Task>("task_update", { id, patch }),
   taskComplete: (id: string, done: boolean) => invoke<void>("task_complete", { id, done }),
   taskDelete: (id: string) => invoke<void>("task_delete", { id }),
+  taskRestore: (id: string) => invoke<void>("task_restore", { id }),
   taskSetTags: (taskId: string, tagIds: string[]) =>
     invoke<void>("task_set_tags", { taskId, tagIds }),
   taskTags: () => invoke<Record<string, string[]>>("task_tags"),
@@ -42,6 +44,10 @@ export const repo = {
   settingsSet: (key: string, value: string) =>
     invoke<Record<string, string>>("settings_set", { key, value }),
   backupNow: () => invoke<string>("backup_now"),
+  backupAuto: () => invoke<string | null>("backup_auto"),
+  backupList: () => invoke<BackupEntry[]>("backup_list"),
+  backupRestore: (path: string) => invoke<void>("backup_restore", { path }),
+  appRestart: () => invoke<void>("app_restart"),
   dataDir: () => invoke<string>("data_dir"),
 };
 

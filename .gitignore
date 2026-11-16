@@ -33,5 +33,6 @@ _tasks
 __pycache__/
 *.pyc
 
+.webview2-e2e
 
 

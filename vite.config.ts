@@ -23,7 +23,9 @@ export default defineConfig(() => ({
         }
       : undefined,
     watch: {
-      ignored: ["**/src-tauri/**"],
+      // E2E 用的 WebView2 用户数据目录：不忽略的话它的 Code Cache 写入会被
+      // watcher 当成源码变更，触发 full reload → 又写盘 → 无限重载
+      ignored: ["**/src-tauri/**", "**/.webview2-e2e/**"],
     },
   },
 }));

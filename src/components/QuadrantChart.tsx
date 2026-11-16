@@ -5,7 +5,13 @@ import { select } from "d3-selection";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { Board, FilterState, Placement, Tag, Task } from "../data/types";
 import { BOARD_LABEL, colorForTask, dateKey, isOverdue, shortTitle } from "../lib/board";
-import { CHART, CHART_INNER_H, CHART_INNER_W, pixelToUrgency } from "../lib/chartGeometry";
+import {
+  CHART,
+  CHART_INNER_H,
+  CHART_INNER_W,
+  pixelToUrgency,
+  urgencyToPixel,
+} from "../lib/chartGeometry";
 import { useDragStore } from "../lib/drag";
 import { matchesFilter } from "../lib/filter";
 import { setLocale, t } from "../lib/i18n";
@@ -73,6 +79,12 @@ interface QuadrantChartProps {
   childMode: ChildViewMode;
   theme: "dark" | "light";
   onContextMenu: (taskId: string, x: number, y: number) => void;
+  /** A2：Delete 键把点从图上移除（不删任务） */
+  onRemovePlacement: (taskId: string) => void;
+  /** P4：示例数据 */
+  sampleActive: boolean;
+  onSeedSample: () => void;
+  onClearSample: () => void;
 }
 
 export function QuadrantChart({
@@ -94,6 +106,10 @@ export function QuadrantChart({
   childMode,
   theme,
   onContextMenu,
+  onRemovePlacement,
+  sampleActive,
+  onSeedSample,
+  onClearSample,
 }: QuadrantChartProps) {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -316,25 +332,6 @@ export function QuadrantChart({
       .attr("fill", "#8b98a9")
       .attr("font-size", 11)
       .text(t("重要性 ↑"));
-
-    if (entries.length === 0) {
-      root
-        .append("text")
-        .attr("x", INNER_W / 2)
-        .attr("y", INNER_H / 2 - 6)
-        .attr("text-anchor", "middle")
-        .attr("fill", "#475569")
-        .attr("font-size", 13)
-        .text(t("这张图还没有任务"));
-      root
-        .append("text")
-        .attr("x", INNER_W / 2)
-        .attr("y", INNER_H / 2 + 16)
-        .attr("text-anchor", "middle")
-        .attr("fill", "#334155")
-        .attr("font-size", 11)
-        .text(t("从右侧任务树拖一个节点进来"));
-    }
 
     const points = root
       .append("g")
@@ -790,6 +787,102 @@ export function QuadrantChart({
     });
   }, [selectedId, entries, size]);
 
+  // A2：键盘微调坐标（连续按键合并成一次写库）
+  const pendingRef = useRef<{ taskId: string; x: number; y: number } | null>(null);
+  const commitTimer = useRef<number | null>(null);
+
+  useEffect(
+    () => () => {
+      if (commitTimer.current !== null) window.clearTimeout(commitTimer.current);
+    },
+    [],
+  );
+
+  const queueMove = (current: { taskId: string; x: number; y: number }) => {
+    pendingRef.current = current;
+    const node = containerRef.current?.querySelector<SVGGElement>(
+      `g.chart-point[data-task-id="${current.taskId}"]`,
+    );
+    node?.setAttribute(
+      "transform",
+      `translate(${urgencyToPixel(current.x)},${INNER_H * (1 - current.y / 100)})`,
+    );
+    if (commitTimer.current !== null) window.clearTimeout(commitTimer.current);
+    commitTimer.current = window.setTimeout(() => {
+      commitTimer.current = null;
+      const pending = pendingRef.current;
+      pendingRef.current = null;
+      if (pending) onMove(pending.taskId, pending.x, pending.y);
+    }, 200);
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest("input, textarea, select, [contenteditable='true']")) return;
+
+    if (event.key === "Escape") {
+      if (!selectedId) return;
+      event.preventDefault();
+      onDeselect();
+      return;
+    }
+    if (entries.length === 0) return;
+
+    if (event.key === "Tab") {
+      if (!selectedId) return;
+      event.preventDefault();
+      const index = entries.findIndex((entry) => entry.task.id === selectedId);
+      const delta = event.shiftKey ? -1 : 1;
+      const next = entries[(index + delta + entries.length) % entries.length];
+      if (next) onSelect(next.task.id);
+      return;
+    }
+
+    const entry = selectedId ? entries.find((item) => item.task.id === selectedId) : null;
+    if (!entry) return;
+
+    const step = event.shiftKey ? 5 : 1;
+    const clamp = (value: number) => Math.max(0, Math.min(100, value));
+    const pending = pendingRef.current;
+    const from =
+      pending && pending.taskId === entry.task.id
+        ? { x: pending.x, y: pending.y }
+        : { x: entry.placement.x, y: entry.placement.y };
+
+    switch (event.key) {
+      case "ArrowLeft":
+        event.preventDefault();
+        queueMove({ taskId: entry.task.id, x: clamp(from.x - step), y: from.y });
+        break;
+      case "ArrowRight":
+        event.preventDefault();
+        queueMove({ taskId: entry.task.id, x: clamp(from.x + step), y: from.y });
+        break;
+      case "ArrowUp":
+        event.preventDefault();
+        queueMove({ taskId: entry.task.id, x: from.x, y: clamp(from.y + step) });
+        break;
+      case "ArrowDown":
+        event.preventDefault();
+        queueMove({ taskId: entry.task.id, x: from.x, y: clamp(from.y - step) });
+        break;
+      case "Enter":
+        event.preventDefault();
+        onOpenDetail(entry.task.id);
+        break;
+      case " ":
+        event.preventDefault();
+        onToggleDone(entry.task.id, entry.task.status !== "done");
+        break;
+      case "Delete":
+        event.preventDefault();
+        onRemovePlacement(entry.task.id);
+        break;
+      default:
+        break;
+    }
+  };
+
   const pathOf = (task: Task) => {
     const chain: string[] = [];
     let current: Task | undefined = task;
@@ -824,8 +917,19 @@ export function QuadrantChart({
     <div
       ref={containerRef}
       data-drop-chart="true"
+      // 图上键盘操作（A2）：区域自己处理方向键 / Enter / Delete，语义上当一块可交互画布
+      role="application"
+      aria-label={t("重要性紧迫性四象限任务图")}
+      // biome-ignore lint/a11y/noNoninteractiveTabindex: 画布要能获得焦点才能接收键盘
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
+      onPointerDown={(event) => {
+        const target = event.target as HTMLElement | null;
+        if (target?.closest("input, textarea, select, [contenteditable='true']")) return;
+        containerRef.current?.focus({ preventScroll: true });
+      }}
       className={[
-        "relative h-full w-full rounded-2xl transition-shadow",
+        "relative h-full w-full rounded-2xl outline-none transition-shadow",
         dragging && overChart ? "ring-2 ring-accent-400/60" : "",
         dragging && !overChart ? "ring-1 ring-accent-400/20" : "",
       ].join(" ")}
@@ -871,6 +975,44 @@ export function QuadrantChart({
               ? t("松开：按落点放上去")
               : t("拖到{board}图上松开", { board: BOARD_LABEL[board] })}
           </span>
+        </div>
+      ) : null}
+
+      {entries.length === 0 ? (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6">
+          <div className="pointer-events-auto w-full max-w-sm rounded-xl border border-[var(--line)] bg-[var(--panel)] p-4 shadow-xl">
+            <p className="text-center text-[12px] font-medium text-[var(--t1)]">
+              {t("这张图还没有任务")}
+            </p>
+            <ol className="mt-2 space-y-1 text-[11px] leading-relaxed text-[var(--t3)]">
+              <li>{t("① 从右侧任务树拖一个节点进来")}</li>
+              <li>{t("② 落点决定象限：越靠左上越重要且紧急")}</li>
+              <li>{t("③ 在点上右键可以改动量与截止日")}</li>
+            </ol>
+            {tasks.length === 0 ? (
+              <div className="mt-3 text-center">
+                <button
+                  type="button"
+                  onClick={onSeedSample}
+                  className="h-7 rounded-md bg-accent-400 px-3 text-[11px] font-medium text-accent-950 hover:bg-accent-300"
+                >
+                  {t("试试示例数据")}
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {sampleActive ? (
+        <div className="absolute inset-x-0 top-8 flex justify-center">
+          <button
+            type="button"
+            onClick={onClearSample}
+            className="rounded-full border border-amber-400/30 bg-[var(--bg)]/90 px-3 py-1 text-[10px] text-amber-200 hover:bg-[var(--hover)]"
+          >
+            {t("清除示例数据")}
+          </button>
         </div>
       ) : null}
       <div className="pointer-events-none absolute right-3 top-2 flex items-center gap-2 text-[10px] text-[var(--t3)]">

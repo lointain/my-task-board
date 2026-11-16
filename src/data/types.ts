@@ -80,6 +80,12 @@ export interface FilterState {
   text: string;
 }
 
+export interface BackupEntry {
+  path: string;
+  createdAt: string;
+  size: number;
+}
+
 export const EMPTY_FILTER: FilterState = {
   statuses: ["todo", "doing"],
   tagIds: [],

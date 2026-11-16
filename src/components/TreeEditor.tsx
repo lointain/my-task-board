@@ -57,6 +57,8 @@ export function TreeEditor({
   const deleteTask = useAppStore((state) => state.deleteTask);
   const placeTaskOn = useAppStore((state) => state.placeTaskOn);
   const placeTaskAtPointer = useAppStore((state) => state.placeTaskAtPointer);
+  const removePlacement = useAppStore((state) => state.removePlacement);
+  const notify = useAppStore((state) => state.notify);
   const setBoard = useAppStore((state) => state.setBoard);
 
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -177,7 +179,7 @@ export function TreeEditor({
     const isTopLevel = !task.parentId;
     const parentId = isTopLevel ? task.id : task.parentId;
     const created = await createTask({
-      title: t("新任务"),
+      title: "",
       parentId,
       afterId: isTopLevel ? null : task.id,
     });
@@ -353,6 +355,12 @@ export function TreeEditor({
       }
       if (el?.closest("[data-drop-chart]")) {
         void placeTaskAtPointer(task.id, clientX, clientY);
+        return;
+      }
+      // A4：拖到图表外松手 = 取消承诺（只对已经在图上的节点生效）
+      if (placementMap.has(task.id)) {
+        void removePlacement(task.id);
+        notify(t("已从图上移除，Ctrl+Z 撤销"));
       }
     };
 
@@ -387,6 +395,11 @@ export function TreeEditor({
 
     if (event.key === "Enter") {
       event.preventDefault();
+      // P2：当前行还是没写过的占位行时，回车只往下走，不再堆积空任务
+      if (!(drafts[task.id] ?? task.title).trim() && !task.title) {
+        focusRowAt(index + 1);
+        return;
+      }
       await commitTitle(task);
       await addAfter(task);
       return;
@@ -567,14 +580,18 @@ export function TreeEditor({
 
         <input
           value={drafts[task.id] ?? task.title}
+          placeholder={t("新任务")}
           onChange={(event) => setDrafts((prev) => ({ ...prev, [task.id]: event.target.value }))}
           onBlur={() => {
+            const draft = (drafts[task.id] ?? task.title).trim();
             void commitTitle(task);
             setDrafts((prev) => {
               const copy = { ...prev };
               delete copy[task.id];
               return copy;
             });
+            // P2：新建后一直没写标题，失焦就自动删掉，避免尾部堆积空行
+            if (!draft && !task.title) void deleteTask(task.id);
           }}
           onKeyDown={(event) => void onKeyDown(event, task)}
           onMouseDown={(event) => {

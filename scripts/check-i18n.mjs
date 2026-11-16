@@ -32,3 +32,7 @@ const missingJa = [...used].filter((k) => !ja.has(k));
 console.log(`used=${used.size} en=${en.size} ja=${ja.size}`);
 console.log("missing EN:", JSON.stringify(missingEn));
 console.log("missing JA:", JSON.stringify(missingJa));
+if (missingEn.length > 0 || missingJa.length > 0) {
+  console.error("i18n: 有未翻译的文案，请在 EN / JA 字典中补齐。");
+  process.exitCode = 1;
+}

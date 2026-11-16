@@ -5,18 +5,25 @@ import {
   ChevronDown,
   ChevronRight,
   MoveRight,
+  Pin,
   Play,
   Square,
   Tag as TagIcon,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Placement, Tag, Task } from "../data/types";
 import { BOARD_LABEL, dateKey } from "../lib/board";
-import { t } from "../lib/i18n";
+import { formatMonthDayKey } from "../lib/datetime";
+import { getLocale, t } from "../lib/i18n";
 import { QUADRANTS, quadrantOf } from "../lib/quadrant";
 
 /** 树形视图的展开状态：跨选中、跨重开都保留 */
 const TREE_EXPANDED = new Map<string, boolean>();
+
+/** P1：面板的位置偏移与贴边状态，只在本次运行内记住（session 级） */
+const PANEL_SESSION = { dx: 0, dy: 0, pinned: false };
+
+const PANEL_WIDTH = 264;
 
 export type ChildViewMode = "direct" | "breadcrumb" | "tree";
 
@@ -99,6 +106,45 @@ export function ChartTooltip({
   const byParent = useMemo(() => buildByParent(tasks), [tasks]);
   const [focusId, setFocusId] = useState(task.id);
   const [expandTick, setExpandTick] = useState(0);
+  // P1：面板可拖动 + 可贴右边缘（偏移只记在内存）
+  const [panel, setPanel] = useState({ ...PANEL_SESSION });
+  const dragRef = useRef<{ startX: number; startY: number; dx: number; dy: number } | null>(null);
+
+  const startPanelDrag = (event: React.PointerEvent) => {
+    if (!interactive) return;
+    event.preventDefault();
+    event.stopPropagation();
+    dragRef.current = {
+      startX: event.clientX,
+      startY: event.clientY,
+      dx: panel.dx,
+      dy: panel.dy,
+    };
+    const onMove = (moveEvent: PointerEvent) => {
+      const start = dragRef.current;
+      if (!start) return;
+      const next = {
+        dx: start.dx + (moveEvent.clientX - start.startX),
+        dy: start.dy + (moveEvent.clientY - start.startY),
+        pinned: false,
+      };
+      Object.assign(PANEL_SESSION, next);
+      setPanel(next);
+    };
+    const onUp = () => {
+      dragRef.current = null;
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  };
+
+  const togglePin = () => {
+    const pinned = !panel.pinned;
+    PANEL_SESSION.pinned = pinned;
+    setPanel((prev) => ({ ...prev, pinned }));
+  };
 
   useEffect(() => {
     setFocusId(task.id);
@@ -131,15 +177,20 @@ export function ChartTooltip({
     return (byParent.get(owner.id) ?? []).map((item) => ({ task: item, depth: 0 }));
   })();
 
-  const offsetX = pointer.x > container.width - 280 ? -272 : 18;
-  const offsetY = pointer.y > container.height - 260 ? -220 : 14;
+  const baseOffsetX = pointer.x > container.width - 280 ? -272 : 18;
+  const baseOffsetY = pointer.y > container.height - 260 ? -220 : 14;
+  const maxLeft = Math.max(4, container.width - PANEL_WIDTH - 4);
+  const left = panel.pinned
+    ? Math.max(4, container.width - PANEL_WIDTH - 12)
+    : Math.max(4, Math.min(pointer.x + baseOffsetX + panel.dx, maxLeft));
+  const top = Math.max(4, pointer.y + baseOffsetY + panel.dy);
 
   const dueText = (() => {
     if (!task.effectiveDue) return t("无截止日");
-    if (overdue)
-      return t("逾期 {n} 天（{date}）", { n: Math.abs(dueIn ?? 0), date: task.effectiveDue });
-    if (dueIn === 0) return t("今天到期（{date}）", { date: task.effectiveDue });
-    return t("还有 {n} 天（{date}）", { n: dueIn ?? 0, date: task.effectiveDue });
+    const date = formatMonthDayKey(task.effectiveDue, getLocale());
+    if (overdue) return t("逾期 {n} 天（{date}）", { n: Math.abs(dueIn ?? 0), date });
+    if (dueIn === 0) return t("今天到期（{date}）", { date });
+    return t("还有 {n} 天（{date}）", { n: dueIn ?? 0, date });
   })();
 
   const momentumText =
@@ -156,15 +207,36 @@ export function ChartTooltip({
         "absolute z-30 w-[264px] overflow-hidden rounded-xl border border-[var(--line)] bg-[var(--tip-bg)] shadow-2xl backdrop-blur-sm",
         interactive ? "pointer-events-auto" : "pointer-events-none",
       ].join(" ")}
-      style={{ left: pointer.x + offsetX, top: pointer.y + offsetY }}
+      style={{ left, top }}
       onClick={(event) => event.stopPropagation()}
     >
-      <div className="border-b border-[var(--line-soft)] px-3 py-2">
+      <div
+        className={[
+          "border-b border-[var(--line-soft)] px-3 py-2",
+          interactive ? "cursor-move select-none" : "",
+        ].join(" ")}
+        onPointerDown={startPanelDrag}
+      >
         <div className="flex items-start gap-1.5">
           <span className="mt-px shrink-0 text-[12px] leading-none">{task.emoji ?? ""}</span>
           <span className="min-w-0 flex-1 text-[12px] font-medium leading-snug text-[var(--t1)]">
             {task.title}
           </span>
+          {interactive ? (
+            <button
+              type="button"
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={togglePin}
+              className={[
+                "flex h-5 w-5 shrink-0 items-center justify-center rounded",
+                panel.pinned ? "text-accent-300" : "text-[var(--t4)] hover:text-[var(--t2)]",
+              ].join(" ")}
+              title={panel.pinned ? t("取消贴边") : t("贴右边缘")}
+              aria-label={panel.pinned ? t("取消贴边") : t("贴右边缘")}
+            >
+              <Pin size={11} />
+            </button>
+          ) : null}
         </div>
         {path.length > 1 ? (
           <div className="mt-1 truncate pl-[18px] text-[9px] text-[var(--t3)]">

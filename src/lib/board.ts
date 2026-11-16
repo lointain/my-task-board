@@ -1,5 +1,6 @@
 import type { Board, Placement, Tag, TagGroup, Task } from "../data/types";
-import { t } from "./i18n";
+import { formatMonthDay, formatMonthDayKey } from "./datetime";
+import { getLocale, t } from "./i18n";
 
 export const DAY_BOARDS: Board[] = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 export const BOARDS: Board[] = [...DAY_BOARDS, "week"];
@@ -60,7 +61,7 @@ export function weekDays(now = new Date()): BoardDay[] {
     date.setDate(start.getDate() + index);
     return {
       board,
-      label: `${BOARD_LABEL[board]} ${date.getMonth() + 1}/${date.getDate()}`,
+      label: `${BOARD_LABEL[board]} ${formatMonthDay(date, getLocale())}`,
       short: BOARD_LABEL[board],
       date,
       dateKey: dateKey(date),
@@ -169,8 +170,9 @@ export function dueLabel(task: Task): string | null {
   if (!task.effectiveDue) return null;
   const today = dateKey(new Date());
   if (task.effectiveDue === today) return t("今天");
-  if (task.effectiveDue < today) return t("逾期 {date}", { date: task.effectiveDue.slice(5) });
-  return task.effectiveDue.slice(5);
+  const date = formatMonthDayKey(task.effectiveDue, getLocale());
+  if (task.effectiveDue < today) return t("逾期 {date}", { date });
+  return date;
 }
 
 export function shortTitle(title: string, max = 16): string {

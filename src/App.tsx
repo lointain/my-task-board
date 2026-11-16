@@ -1,4 +1,5 @@
 import {
+  Archive,
   BarChart3,
   CalendarDays,
   ListTree,
@@ -9,6 +10,7 @@ import {
   Sun,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ArchiveDrawer } from "./components/ArchiveDrawer";
 import { ContextMenu, type MenuItem } from "./components/ContextMenu";
 import { DragGhost } from "./components/DragGhost";
 import { FilterBar } from "./components/FilterBar";
@@ -20,10 +22,11 @@ import { TaskDetailModal } from "./components/TaskDetailModal";
 import { TaskTree } from "./components/TaskTree";
 import { WeeklyStatsModal } from "./components/WeeklyStatsModal";
 import { WeekStrip } from "./components/WeekStrip";
-import { BOARD_LABEL } from "./lib/board";
+import { BOARD_LABEL, BOARDS } from "./lib/board";
 import { clientToChartPoint } from "./lib/chartGeometry";
 import { registerDropHandler } from "./lib/drag";
 import { matchesFilter } from "./lib/filter";
+import { redo, undo } from "./lib/history";
 import { localeFromSettings, setLocale, t, translateError } from "./lib/i18n";
 import { useAppStore } from "./store/useAppStore";
 
@@ -47,6 +50,55 @@ export default function App() {
     document.documentElement.dataset.theme = theme;
     document.documentElement.lang = locale;
   }, [theme, locale]);
+
+  // 快捷键：Ctrl+Z 撤销 / Ctrl+Shift+Z、Ctrl+Y 重做；1–7 周一到周日，8 周图，0 或 W 也切周图
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const editing = Boolean(target?.closest("input, textarea, select, [contenteditable='true']"));
+      const mod = event.metaKey || event.ctrlKey;
+
+      if (mod && !event.altKey) {
+        if (event.key.toLowerCase() === "z") {
+          if (editing) return; // 交给输入框 / TipTap 的原生撤销
+          event.preventDefault();
+          const direction = event.shiftKey ? t("已重做：{label}") : t("已撤销：{label}");
+          void (event.shiftKey ? redo() : undo()).then((label) => {
+            if (label !== null) useAppStore.getState().notify(t(direction, { label }));
+          });
+          return;
+        }
+        if (event.key.toLowerCase() === "y") {
+          if (editing) return;
+          event.preventDefault();
+          void redo().then((label) => {
+            if (label !== null) {
+              useAppStore.getState().notify(t("已重做：{label}", { label }));
+            }
+          });
+          return;
+        }
+        return;
+      }
+
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      if (editing) return;
+      if (event.key >= "1" && event.key <= "8") {
+        const next = BOARDS[Number(event.key) - 1];
+        if (next) {
+          event.preventDefault();
+          useAppStore.getState().setBoard(next);
+        }
+        return;
+      }
+      if (event.key === "0" || event.key.toLowerCase() === "w") {
+        event.preventDefault();
+        useAppStore.getState().setBoard("week");
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
   const loading = useAppStore((state) => state.loading);
   const error = useAppStore((state) => state.error);
   const clearError = useAppStore((state) => state.clearError);
@@ -54,11 +106,12 @@ export default function App() {
   const reload = useAppStore((state) => state.reload);
   const board = useAppStore((state) => state.board);
   const filters = useAppStore((state) => state.filtersByBoard[state.board]);
+  const toast = useAppStore((state) => state.toast);
   const selectedId = useAppStore((state) => state.selectedId);
   const taskTags = useAppStore((state) => state.taskTags);
   const select = useAppStore((state) => state.select);
-  const focusInTree = useAppStore((state) => state.focusInTree);
   const setBoard = useAppStore((state) => state.setBoard);
+  const focusInTree = useAppStore((state) => state.focusInTree);
   const placeTaskOn = useAppStore((state) => state.placeTaskOn);
   const movePlacement = useAppStore((state) => state.movePlacement);
   const setMomentum = useAppStore((state) => state.setMomentum);
@@ -70,10 +123,12 @@ export default function App() {
 
   const [detailId, setDetailId] = useState<string | null>(null);
   const [statsOpen, setStatsOpen] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [projectOpen, setProjectOpen] = useState(false);
   const [momentumTaskId, setMomentumTaskId] = useState<string | null>(null);
   const [menu, setMenu] = useState<MenuState | null>(null);
+  const [sampleIds, setSampleIds] = useState<string[]>([]);
   const lastDayRef = useRef("");
 
   useEffect(() => {
@@ -108,11 +163,33 @@ export default function App() {
     return () => registerDropHandler(null);
   }, [board, placeTaskOn, setBoard]);
 
+  // P4：空库时一键铺一份示例数据，可再一键清掉
+  const seedSample = async () => {
+    const target = useAppStore.getState().board;
+    const seeds = [
+      { title: t("示例：设计数据模型"), x: 78, y: 82 },
+      { title: t("示例：写周报"), x: 62, y: 34 },
+      { title: t("示例：回复邮件"), x: 30, y: 46 },
+    ];
+    const ids: string[] = [];
+    for (const seed of seeds) {
+      const created = await createTask({ title: seed.title });
+      if (!created) continue;
+      ids.push(created.id);
+      await placeTaskOn(target, seed.x, seed.y, created.id);
+    }
+    setSampleIds(ids);
+  };
+
+  const clearSample = async () => {
+    for (const id of sampleIds) await deleteTask(id);
+    setSampleIds([]);
+  };
+
   const taskMap = useMemo(
     () => new Map((data?.tasks ?? []).map((task) => [task.id, task])),
     [data?.tasks],
   );
-
   const chartPlacements = useMemo(() => {
     const placements = data?.placements ?? [];
     return board === "week" ? placements : placements.filter((p) => p.board === board);
@@ -232,6 +309,15 @@ export default function App() {
           </button>
           <button
             type="button"
+            onClick={() => setArchiveOpen(true)}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--panel)] text-[var(--t3)] hover:text-[var(--t1)]"
+            title={t("已完成 / 已归档")}
+            aria-label={t("已完成 / 已归档")}
+          >
+            <Archive size={14} />
+          </button>
+          <button
+            type="button"
             onClick={() => void setSetting("theme", theme === "dark" ? "light" : "dark")}
             className="flex h-8 w-8 items-center justify-center rounded-lg border border-[var(--line)] bg-[var(--panel)] text-[var(--t3)] hover:text-[var(--t1)]"
             title={theme === "dark" ? t("切换到浅色") : t("切换到深色")}
@@ -297,6 +383,10 @@ export default function App() {
                 (data?.settings.child_view_mode as "direct" | "breadcrumb" | "tree") ?? "direct"
               }
               theme={theme}
+              onRemovePlacement={(taskId) => void removePlacement(taskId)}
+              sampleActive={sampleIds.length > 0}
+              onSeedSample={() => void seedSample()}
+              onClearSample={() => void clearSample()}
             />
           </section>
 
@@ -316,7 +406,6 @@ export default function App() {
             <span className="ml-auto text-[var(--t4)]">
               颜色 = {data?.settings.color_by === "project" ? t("项目") : t("标签组")} ·{" "}
               {t("拖拽 / 右键 / 双击")}
-              双击
             </span>
           </div>
         </main>
@@ -343,6 +432,14 @@ export default function App() {
       </footer>
 
       <TaskDetailModal task={detailTask} onClose={() => setDetailId(null)} />
+      <ArchiveDrawer
+        open={archiveOpen}
+        onClose={() => setArchiveOpen(false)}
+        onOpenDetail={(id) => {
+          setArchiveOpen(false);
+          setDetailId(id);
+        }}
+      />
       <WeeklyStatsModal
         open={statsOpen}
         onClose={() => setStatsOpen(false)}
@@ -364,6 +461,12 @@ export default function App() {
       ) : null}
 
       <DragGhost />
+
+      {toast ? (
+        <div className="pointer-events-none fixed bottom-12 left-1/2 z-[65] -translate-x-1/2 rounded-lg border border-[var(--line-strong,var(--line))] bg-[var(--panel)] px-3.5 py-2 text-[11px] text-[var(--t1)] shadow-xl">
+          {toast}
+        </div>
+      ) : null}
 
       {error ? (
         <div className="fixed bottom-12 left-1/2 z-[70] flex max-w-[80vw] -translate-x-1/2 items-center gap-3 rounded-lg border border-red-400/30 bg-red-950/90 px-4 py-2.5 text-[11px] text-red-100 shadow-xl">

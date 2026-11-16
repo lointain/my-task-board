@@ -1,7 +1,8 @@
 import type { Board } from "../data/types";
 import { BOARD_LABEL, dateKey, weekDays } from "../lib/board";
+import { formatMonthDay } from "../lib/datetime";
 import { useDragStore } from "../lib/drag";
-import { t } from "../lib/i18n";
+import { getLocale, t } from "../lib/i18n";
 import { useAppStore } from "../store/useAppStore";
 
 export function WeekStrip() {
@@ -12,6 +13,7 @@ export function WeekStrip() {
   const over = useDragStore((state) => state.over);
   const days = weekDays();
   const todayKey = dateKey(new Date());
+  const locale = getLocale();
 
   const countFor = (target: Board) => {
     if (!data) return 0;
@@ -52,9 +54,7 @@ export function WeekStrip() {
             ].join(" ")}
           >
             <span className="font-medium">{day.short}</span>
-            <span className="text-[10px] text-[var(--t3)]">
-              {day.date.getMonth() + 1}/{day.date.getDate()}
-            </span>
+            <span className="text-[10px] text-[var(--t3)]">{formatMonthDay(day.date, locale)}</span>
             {day.isToday ? <span className="h-1.5 w-1.5 rounded-full bg-accent-400" /> : null}
             {count > 0 ? (
               <span className="rounded-full bg-[var(--hover-strong)] px-1.5 text-[10px] text-[var(--t3)]">

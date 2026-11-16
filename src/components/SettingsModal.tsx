@@ -1,7 +1,7 @@
 import { Database, Plus, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { repo } from "../data/repository";
-import type { TagGroup } from "../data/types";
+import type { BackupEntry, TagGroup } from "../data/types";
 import { groupColor } from "../lib/board";
 import { LOCALES, type Locale, setLocale, t } from "../lib/i18n";
 import { useAppStore } from "../store/useAppStore";
@@ -20,6 +20,9 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
   const deleteTag = useAppStore((state) => state.deleteTag);
   const setSetting = useAppStore((state) => state.setSetting);
   const backup = useAppStore((state) => state.backup);
+  const listBackups = useAppStore((state) => state.listBackups);
+  const restoreBackup = useAppStore((state) => state.restoreBackup);
+  const restartApp = useAppStore((state) => state.restartApp);
 
   const [groupName, setGroupName] = useState("");
   const [groupMode, setGroupMode] = useState<"single" | "multi">("single");
@@ -33,6 +36,17 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
   const locale = (data?.settings.locale as Locale) ?? "zh-CN";
   const [dataDir, setDataDir] = useState("");
   const [backupPath, setBackupPath] = useState("");
+  const [backups, setBackups] = useState<BackupEntry[]>([]);
+  const [restored, setRestored] = useState(false);
+
+  const refreshBackups = useCallback(async () => {
+    setBackups(await listBackups());
+  }, [listBackups]);
+
+  const restore = async (path: string) => {
+    if (!window.confirm(t("恢复这份备份？当前数据会先另存为 data.db.before-restore。"))) return;
+    if (await restoreBackup(path)) setRestored(true);
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -41,11 +55,13 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
     setShowMomentum(data?.settings.show_momentum !== "false");
     setHorizon(data?.settings.momentum_horizon_days ?? "7");
     setChildMode(data?.settings.child_view_mode ?? "direct");
+    setRestored(false);
+    void refreshBackups();
     void repo
       .dataDir()
       .then(setDataDir)
       .catch(() => setDataDir(""));
-  }, [open, data?.settings]);
+  }, [open, data?.settings, refreshBackups]);
 
   if (!open) return null;
 
@@ -331,13 +347,61 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
               onClick={async () => {
                 const path = await backup();
                 if (path) setBackupPath(path);
+                await refreshBackups();
               }}
               className="h-8 rounded-md border border-[var(--line)] px-3 text-[11px] text-[var(--t2)] hover:bg-[var(--hover)]"
             >
-              立即备份
+              {t("立即备份")}
             </button>
             {backupPath ? (
               <span className="break-all text-[10px] text-accent-300">{backupPath}</span>
+            ) : null}
+          </div>
+
+          <div className="mt-3 border-t border-[var(--line-soft)] pt-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] text-[var(--t2)]">{t("最近备份")}</span>
+              <span className="text-[10px] text-[var(--t4)]">{t("保留最近 14 份")}</span>
+            </div>
+            <div className="mt-1.5 space-y-1">
+              {backups.length === 0 ? (
+                <p className="py-2 text-[10px] text-[var(--t4)]">{t("还没有备份")}</p>
+              ) : (
+                backups.map((entry) => (
+                  <div
+                    key={entry.path}
+                    className="flex items-center gap-2 rounded-lg border border-[var(--line)] px-2 py-1.5"
+                  >
+                    <span className="min-w-0 flex-1 truncate text-[10px] text-[var(--t2)]">
+                      {entry.createdAt.replace("T", " ").slice(0, 16)}
+                    </span>
+                    <span className="shrink-0 text-[10px] text-[var(--t4)]">
+                      {Math.max(1, Math.round(entry.size / 1024))} KB
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => void restore(entry.path)}
+                      className="shrink-0 rounded-md border border-[var(--line)] px-2 py-0.5 text-[10px] text-[var(--t3)] hover:text-[var(--t1)]"
+                    >
+                      {t("恢复")}
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+            {restored ? (
+              <div className="mt-2 flex items-center gap-2 rounded-lg border border-amber-400/30 bg-amber-400/10 px-2 py-1.5">
+                <span className="min-w-0 flex-1 text-[10px] text-amber-200">
+                  {t("已从备份恢复，需要重启应用。")}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => void restartApp()}
+                  className="shrink-0 rounded-md bg-amber-400 px-2 py-0.5 text-[10px] font-medium text-amber-950"
+                >
+                  {t("立即重启")}
+                </button>
+              </div>
             ) : null}
           </div>
         </section>

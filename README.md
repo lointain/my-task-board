@@ -14,8 +14,8 @@
 
 Windows x64（Win10/11，需要 WebView2）：
 
-- **安装版**：[TaskBoard_0.1.1_x64-setup.exe](https://github.com/lointain/my-task-board/releases/download/v0.1.1/TaskBoard_0.1.1_x64-setup.exe)（1.95 MB）
-- **免安装**：[taskboard.exe](https://github.com/lointain/my-task-board/releases/download/v0.1.1/taskboard.exe)（4.63 MB）
+- **安装版**：[TaskBoard_0.2.0_x64-setup.exe](https://github.com/lointain/my-task-board/releases/download/v0.2.0/TaskBoard_0.2.0_x64-setup.exe)（1.98 MB）
+- **免安装**：[taskboard.exe](https://github.com/lointain/my-task-board/releases/download/v0.2.0/taskboard.exe)（4.98 MB）
 - 全部版本：[Releases](https://github.com/lointain/my-task-board/releases)
 
 ## 现在能做什么
@@ -74,7 +74,7 @@ pnpm tauri build
 
 安装包输出在 `src-tauri/target/release/bundle/`。配置为 NSIS，不内置 WebView2 运行时。
 
-实测体积：安装包 **1.94 MB**，`taskboard.exe` **4.61 MB**。
+实测体积：安装包 **1.98 MB**，`taskboard.exe` **4.98 MB**。
 
 ### 图标
 
@@ -102,8 +102,8 @@ E2E 冒烟（需先带调试端口启动应用）：
 $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = "--remote-debugging-port=9222"
 pnpm tauri dev
 # 另开终端
-node scripts/verify.mjs    # 基础回归 14 项
-node scripts/verify2.mjs   # 拖拽 / 拆解 / 编辑器 15 项
+node scripts/verify.mjs    # 基础回归 18 项
+node scripts/verify2.mjs   # 拖拽 / 拆解 / 编辑器 / 键盘 / 撤销 61 项
 ```
 
 开发实例（与已安装的正式版可同时运行，数据目录独立）：
@@ -126,6 +126,12 @@ pwsh -File scripts/reset-dev-db.ps1   # 只清 com.yao.taskboard.dev 的测试�
 | 拖把手 | 一个把手两种用途：拖到图上/日期标签 = 承诺；拖到某一行上 = 排序或换父级 |
 | 待办项 | 说明里输入 `[] ` 生成待办；排序用剪切/粘贴（编辑器内不做拖拽，避免影响选中文字） |
 | 完成 | 勾选行首 checkbox（级联子节点）。**图上只是隐藏，坐标保留**；取消勾选会按原位置回到图上 |
+| 撤销 / 重做 | `Ctrl+Z` 撤销，`Ctrl+Shift+Z` / `Ctrl+Y` 重做；保留最近 50 步，同类操作 600ms 内合并；输入框 / 编辑器内不拦截 |
+| 切板 | `1`–`7` 切周一…周日，`8` / `0` / `W` 切周图 |
+| 图上键盘 | 选中点后 `←/→` 调紧迫度 ∓1（`Shift` ∓5）、`↑/↓` 调重要度 ±1（`Shift` ±5）、`Tab` 循环选点、`Enter` 详情、`Space` 完成、`Delete` 移出图、`Esc` 取消选中 |
+| 取消承诺 | 把已在图上的节点拖到图表外松手（树里保留，`Ctrl+Z` 可撤销） |
+| 回看已完成 | 顶栏 Archive 图标 → 右侧抽屉（已完成 / 已归档，可「取消完成」或「打开详情」） |
+| 数据安全 | 启动时距上次超过 24 小时自动静默备份（保留 14 份）；设置 → 数据与备份可立即备份 / 恢复 |
 
 
 ## 目录
@@ -146,7 +152,7 @@ scripts/generate-icons.py # 生成 Tauri 图标与 favicon
 
 ## v1 边界
 
-已实现：建项目 / 拆解 / 拖上图 / 拖动 / 详情 / 笔记 / 标签组 / 截止日继承 / 日终顺延 / 动量 / 每板筛选 / 周统计 / 手动备份 / NSIS 打包。
+已实现：建项目 / 拆解 / 拖上图 / 拖动 / 详情 / 笔记 / 标签组 / 截止日继承 / 日终顺延 / 动量 / 每板筛选 / 周统计 / 撤销重做 / 图上键盘 / 完成回收站 / 自动备份与恢复 / NSIS 打包。
 
 暂未做：
 
@@ -156,7 +162,7 @@ scripts/generate-icons.py # 生成 Tauri 图标与 favicon
 - 多用户/共享/实时。
 - 翻周与历史周；只显示当前周。
 - 图片只支持 URL 插入；本地附件托管与任意文件路径引用未做 UI。
-- 每日自动备份（目前为手动“立即备份”）。
+- 图上重叠点聚合（同一位置多点仍会互相压住）。
 - 树内鼠标拖拽排序（键盘 `Alt+↑/↓` 已可用）。
 
 ## 文档

@@ -2,6 +2,11 @@
  * 手动 E2E 冒烟脚本：需要先运行 `pnpm tauri dev`，
  * 并以 `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9222` 启动。
  *
+ * 注意：debug 与 release 共用同一 bundle identifier 的 WebView2 user data folder，
+ * 若已有实例在跑（尤其是 release 版），带不同浏览器参数再启动会报
+ * `WebView2 error 0x8007139F`。此时用独立目录启动：
+ *   $env:WEBVIEW2_USER_DATA_FOLDER="<repo>/.webview2-e2e"
+ *
  *   node scripts/verify.mjs
  */
 import { chromium } from "playwright-core";
@@ -80,13 +85,17 @@ check("拖入生成承诺点", (await pointIndex()) >= 0);
 
 // 4. 拖动点并验证持久化
 const point = await pointAt();
-const before = await point.getAttribute("transform");
 const circle = point.locator("circle.point-dot");
 const box = await circle.boundingBox();
+let before = "";
 if (box) {
-  // 先点一下选中（未选中的点拖不动），再拖
+  // 先点一下选中（未选中的点拖不动），再拖。
+  // 注意：刚落下时 transform 是 drop 处理器命令式写入的 2 位小数值，
+  // 选中会触发一次 React 重渲染，之后读到的才是按紧迫度/重要度算出的稳定值，
+  // 所以 before 必须在这次重渲染之后再取，否则和撤销后的值对不上。
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
   await page.waitForTimeout(300);
+  before = await (await pointAt()).getAttribute("transform");
   const selectedBox = await circle.boundingBox();
   await page.mouse.move(selectedBox.x + selectedBox.width / 2, selectedBox.y + selectedBox.height / 2);
   await page.mouse.down();
@@ -100,6 +109,26 @@ if (box) {
 }
 const after = await (await pointAt()).getAttribute("transform");
 check("拖动点改变坐标", before !== after);
+
+// 4.5 A1：Ctrl+Z 撤销 / Ctrl+Shift+Z 重做拖动
+await page.mouse.click(5, 5);
+await page.keyboard.press("Control+z");
+await page.waitForTimeout(900);
+const undoneTransform = await (await pointAt()).getAttribute("transform");
+const undoSaid = await page
+  .locator("div.fixed.bottom-12")
+  .first()
+  .innerText()
+  .catch(() => "");
+check(
+  "A1 Ctrl+Z 撤销拖动",
+  undoneTransform === before && undoSaid.includes("已撤销"),
+  `${undoneTransform} / ${undoSaid}`,
+);
+await page.keyboard.press("Control+Shift+z");
+await page.waitForTimeout(900);
+check("A1 Ctrl+Shift+Z 重做拖动", (await (await pointAt()).getAttribute("transform")) === after);
+
 await page.reload();
 await page.waitForTimeout(1000);
 const reloaded = await (await pointAt()).getAttribute("transform");
@@ -126,7 +155,8 @@ await page.waitForTimeout(300);
 await page.locator('input[type="date"]').last().fill("2026-12-31");
 await page.getByRole("button", { name: "保存", exact: true }).click();
 await page.waitForTimeout(900);
-check("设置截止日", (await page.locator("body").innerText()).includes("12-31"));
+// A7 日期本地化后 zh-CN 显示为「12月31日」，不再输出 12-31
+check("设置截止日", /12月31日|12-31|12\/31|Dec 31/.test(await page.locator("body").innerText()));
 
 // 7. 完成 → 点消失、树保留
 await page.locator(`[data-tree-row="${childId}"] button`).first().click();
@@ -140,6 +170,21 @@ await page.waitForTimeout(600);
 const statsText = await page.locator("body").innerText();
 check("周统计记录完成", /完成\s*\d+/.test(statsText) && statsText.includes("本周完成"));
 await page.getByRole("button", { name: "关闭", exact: true }).last().click();
+await page.waitForTimeout(500);
+
+// 8.5 A5：已完成 / 已归档抽屉
+await page.locator('button[title="已完成 / 已归档"]').click();
+await page.waitForTimeout(600);
+const drawer = page.locator("div.fixed.inset-0.z-40 aside");
+const drawerText = await drawer.innerText().catch(() => "");
+check(
+  "A5 抽屉列出已完成任务",
+  drawerText.includes("本周完成") && drawerText.includes(child) && drawerText.includes("取消完成"),
+  drawerText.replace(/\n/g, " | ").slice(0, 100),
+);
+await page.keyboard.press("Escape");
+await page.waitForTimeout(600);
+check("A5 Esc 关闭抽屉", (await page.locator("div.fixed.inset-0.z-40 aside").count()) === 0);
 
 // 9. 设置里的标签组
 await page.locator('button[title="设置"]').click();
